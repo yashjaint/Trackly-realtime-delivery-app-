@@ -1,0 +1,26 @@
+# Gradle & IDE
+.gradle/
+build/
+.idea/
+*.iml
+.DS_Store
+
+# Android Specific
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+
+# Backend & Database
+backend/.gradle/
+backend/build/
+backend/out/
+backend/*.db
+backend/*.mv.db
+backend/.idea/
+
+# Secrets & Keys
+*.keystore
+*.jks
+google-services.json
