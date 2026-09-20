@@ -384,11 +384,11 @@ fun DriverDeliveryScreenContent(
 
                         // Live Map View for Driver
                         com.trackly.core.common.ui.LiveTrackingMapView(
-                            pickupLat = order.pickupLat ?: 37.7749,
-                            pickupLng = order.pickupLng ?: -122.4194,
+                            pickupLat = order.pickupLat ?: 17.3850,
+                            pickupLng = order.pickupLng ?: 78.4867,
                             pickupName = order.pickupAddress,
-                            deliveryLat = order.deliveryLat ?: 37.7833,
-                            deliveryLng = order.deliveryLng ?: -122.4167,
+                            deliveryLat = order.deliveryLat ?: 17.4401,
+                            deliveryLng = order.deliveryLng ?: 78.3489,
                             deliveryName = order.deliveryAddress,
                             driverLat = uiState.driverLat,
                             driverLng = uiState.driverLng

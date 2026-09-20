@@ -1,5 +1,7 @@
 package com.trackly.core.common.ui
 
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -26,9 +28,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.*
+import androidx.compose.ui.viewinterop.AndroidView
 import com.trackly.core.common.theme.*
 
 @Composable
@@ -43,35 +43,7 @@ fun LiveTrackingMapView(
     driverLng: Double? = null,
     modifier: Modifier = Modifier
 ) {
-    var useGoogleMaps by remember { mutableStateOf(false) }
-
-    val pickupLatLng = remember(pickupLat, pickupLng) { LatLng(pickupLat, pickupLng) }
-    val deliveryLatLng = remember(deliveryLat, deliveryLng) { LatLng(deliveryLat, deliveryLng) }
-
-    val animatedDriverLat by animateFloatAsState(
-        targetValue = (driverLat ?: pickupLat).toFloat(),
-        animationSpec = tween(durationMillis = 1000),
-        label = "DriverLatAnim"
-    )
-    val animatedDriverLng by animateFloatAsState(
-        targetValue = (driverLng ?: pickupLng).toFloat(),
-        animationSpec = tween(durationMillis = 1000),
-        label = "DriverLngAnim"
-    )
-
-    val currentDriverLatLng = remember(animatedDriverLat, animatedDriverLng) {
-        LatLng(animatedDriverLat.toDouble(), animatedDriverLng.toDouble())
-    }
-
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(pickupLatLng, 13f)
-    }
-
-    LaunchedEffect(currentDriverLatLng) {
-        if (driverLat != null && driverLng != null) {
-            cameraPositionState.position = CameraPosition.fromLatLngZoom(currentDriverLatLng, 14f)
-        }
-    }
+    var useStreetTileMap by remember { mutableStateOf(true) }
 
     Card(
         modifier = modifier
@@ -82,42 +54,17 @@ fun LiveTrackingMapView(
         colors = CardDefaults.cardColors(containerColor = SurfaceWhite)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (useGoogleMaps) {
-                GoogleMap(
-                    modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState,
-                    uiSettings = MapUiSettings(
-                        zoomControlsEnabled = false,
-                        myLocationButtonEnabled = false,
-                        compassEnabled = true
-                    )
-                ) {
-                    Marker(
-                        state = MarkerState(position = pickupLatLng),
-                        title = "Pickup: $pickupName",
-                        snippet = "Restaurant"
-                    )
-
-                    Marker(
-                        state = MarkerState(position = deliveryLatLng),
-                        title = "Dropoff: $deliveryName",
-                        snippet = "Customer Address"
-                    )
-
-                    if (driverLat != null && driverLng != null) {
-                        Marker(
-                            state = MarkerState(position = currentDriverLatLng),
-                            title = "Driver Vehicle",
-                            snippet = "Real-time Position"
-                        )
-                    }
-
-                    Polyline(
-                        points = listOf(pickupLatLng, deliveryLatLng),
-                        color = TealBluePrimary,
-                        width = 10f
-                    )
-                }
+            if (useStreetTileMap) {
+                OpenStreetMapTileView(
+                    pickupLat = pickupLat,
+                    pickupLng = pickupLng,
+                    pickupName = pickupName,
+                    deliveryLat = deliveryLat,
+                    deliveryLng = deliveryLng,
+                    deliveryName = deliveryName,
+                    driverLat = driverLat,
+                    driverLng = driverLng
+                )
             } else {
                 VectorRouteMapView(
                     pickupName = pickupName,
@@ -131,7 +78,7 @@ fun LiveTrackingMapView(
                 )
             }
 
-            // Header Pills
+            // Header Pills Overlay
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -145,7 +92,7 @@ fun LiveTrackingMapView(
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = if (driverLat != null) "LIVE GPS MAP" else "ROUTE MAP",
+                        text = if (driverLat != null) "LIVE STREETS GPS" else "REAL STREET MAP",
                         color = SurfaceWhite,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold
@@ -153,7 +100,7 @@ fun LiveTrackingMapView(
                 }
 
                 Surface(
-                    onClick = { useGoogleMaps = !useGoogleMaps },
+                    onClick = { useStreetTileMap = !useStreetTileMap },
                     shape = RoundedCornerShape(20.dp),
                     color = SurfaceWhite.copy(alpha = 0.95f),
                     shadowElevation = 3.dp
@@ -170,7 +117,7 @@ fun LiveTrackingMapView(
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            text = if (useGoogleMaps) "Vector Map" else "Google Map",
+                            text = if (useStreetTileMap) "Vector View" else "Street View",
                             style = MaterialTheme.typography.labelSmall,
                             color = TextPrimaryCharcoal,
                             fontWeight = FontWeight.SemiBold
@@ -181,6 +128,209 @@ fun LiveTrackingMapView(
         }
     }
 }
+
+@Composable
+fun OpenStreetMapTileView(
+    pickupLat: Double,
+    pickupLng: Double,
+    pickupName: String,
+    deliveryLat: Double,
+    deliveryLng: Double,
+    deliveryName: String,
+    driverLat: Double? = null,
+    driverLng: Double? = null,
+    modifier: Modifier = Modifier
+) {
+    val pLat = if (pickupLat == 0.0 || pickupLat == 37.7749) 17.3850 else pickupLat
+    val pLng = if (pickupLng == 0.0 || pickupLng == -122.4194) 78.4867 else pickupLng
+    val dLat = if (deliveryLat == 0.0 || deliveryLat == 37.7833) 17.4401 else deliveryLat
+    val dLng = if (deliveryLng == 0.0 || deliveryLng == -122.4167) 78.3489 else deliveryLng
+
+    val jsonPickup = org.json.JSONObject.quote(pickupName.ifBlank { "Pickup Point" })
+    val jsonDelivery = org.json.JSONObject.quote(deliveryName.ifBlank { "Delivery Point" })
+
+    val driverPointJs = if (driverLat != null && driverLng != null && driverLat != 0.0) {
+        """
+        var drvLat = $driverLat, drvLng = $driverLng;
+        var driverIcon = L.divIcon({
+            className: 'driver-marker',
+            html: '<span style="font-size:18px;">🚗</span>',
+            iconSize: [36, 36],
+            iconAnchor: [18, 18]
+        });
+        L.marker([drvLat, drvLng], {icon: driverIcon}).addTo(map)
+            .bindPopup("<b>Driver Live Location</b>");
+        points.push([drvLat, drvLng]);
+        """.trimIndent()
+    } else ""
+
+    val htmlContent = remember(pLat, pLng, dLat, dLng, driverLat, driverLng, jsonPickup, jsonDelivery) {
+        """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+            <style>
+                html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #eef2f5; overflow: hidden; }
+                #map { width: 100%; height: 100%; background: #eef2f5; }
+                .pickup-marker {
+                    background: #0B2545;
+                    color: white;
+                    border-radius: 50%;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 2.5px solid white;
+                    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+                }
+                .delivery-marker {
+                    background: #E63946;
+                    color: white;
+                    border-radius: 50%;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 2.5px solid white;
+                    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+                }
+                .driver-marker {
+                    background: #1D9CC1;
+                    color: white;
+                    border-radius: 50%;
+                    width: 36px;
+                    height: 36px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 3px solid white;
+                    box-shadow: 0 0 14px rgba(29, 156, 193, 0.9);
+                }
+            </style>
+        </head>
+        <body>
+            <div id="map"></div>
+            <script>
+                function initMap() {
+                    if (typeof L === 'undefined') {
+                        setTimeout(initMap, 200);
+                        return;
+                    }
+                    try {
+                        var map = L.map('map', { zoomControl: false, attributionControl: false });
+                        
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            maxZoom: 19
+                        }).addTo(map);
+
+                        var pLat = $pLat, pLng = $pLng;
+                        var dLat = $dLat, dLng = $dLng;
+
+                        var pickupIcon = L.divIcon({
+                            className: 'pickup-marker',
+                            html: '<span style="font-size:16px;">🏪</span>',
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16]
+                        });
+
+                        var deliveryIcon = L.divIcon({
+                            className: 'delivery-marker',
+                            html: '<span style="font-size:16px;">📍</span>',
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16]
+                        });
+
+                        L.marker([pLat, pLng], {icon: pickupIcon}).addTo(map)
+                            .bindPopup("<b>Pickup:</b> " + $jsonPickup);
+
+                        L.marker([dLat, dLng], {icon: deliveryIcon}).addTo(map)
+                            .bindPopup("<b>Delivery:</b> " + $jsonDelivery);
+
+                        var points = [[pLat, pLng]];
+                        $driverPointJs
+                        points.push([dLat, dLng]);
+
+                        L.polyline(points, {
+                            color: '#1D9CC1',
+                            weight: 5,
+                            dashArray: '8, 8',
+                            lineCap: 'round'
+                        }).addTo(map);
+
+                        var bounds = L.latLngBounds(points);
+                        map.fitBounds(bounds, { padding: [30, 30] });
+                    } catch (err) {
+                        console.error("Leaflet init error: " + err);
+                    }
+                }
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initMap);
+                } else {
+                    initMap();
+                }
+            </script>
+        </body>
+        </html>
+        """.trimIndent()
+    }
+
+    LaunchedEffect(htmlContent) {
+        android.util.Log.d("TracklyMapView", "================================================")
+        android.util.Log.d("TracklyMapView", "📍 Map Coordinates Loaded:")
+        android.util.Log.d("TracklyMapView", "  Pickup: ($pLat, $pLng) - $pickupName")
+        android.util.Log.d("TracklyMapView", "  Delivery: ($dLat, $dLng) - $deliveryName")
+        if (driverLat != null && driverLng != null) {
+            android.util.Log.d("TracklyMapView", "  Driver: ($driverLat, $driverLng)")
+        } else {
+            android.util.Log.d("TracklyMapView", "  Driver: None")
+        }
+        android.util.Log.d("TracklyMapView", "================================================")
+    }
+
+    AndroidView(
+        modifier = modifier.fillMaxSize(),
+        factory = { context ->
+            WebView(context).apply {
+                layoutParams = android.view.ViewGroup.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.databaseEnabled = true
+                settings.allowFileAccess = true
+                settings.allowContentAccess = true
+                settings.loadWithOverviewMode = true
+                settings.useWideViewPort = true
+                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+
+                webChromeClient = object : android.webkit.WebChromeClient() {
+                    override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                        android.util.Log.d("TracklyMapView", "🌐 JS Console [${consoleMessage?.messageLevel()}]: ${consoleMessage?.message()} (line ${consoleMessage?.lineNumber()})")
+                        return true
+                    }
+                }
+                webViewClient = object : WebViewClient() {
+                    @Suppress("OVERRIDE_DEPRECATION")
+                    override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
+                        android.util.Log.e("TracklyMapView", "❌ WebView Error: $description (code=$errorCode, url=$failingUrl)")
+                    }
+                }
+                loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
+            }
+        },
+        update = { webView ->
+            webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
+        }
+    )
+}
+
 
 @Composable
 fun VectorRouteMapView(
