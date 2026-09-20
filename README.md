@@ -3,6 +3,7 @@
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0-blue.svg?logo=kotlin)
 ![Android](https://img.shields.io/badge/Android-Jetpack%20Compose-green.svg?logo=android)
 ![Architecture](https://img.shields.io/badge/Architecture-MVVM%20%2B%20Clean%20%2B%20Multi--Module-purple.svg)
+![DI](https://img.shields.io/badge/DI-Dagger%20Hilt-brightgreen.svg)
 ![Concurrency](https://img.shields.io/badge/Concurrency-Coroutines%20%2B%20StateFlow-orange.svg)
 ![Database](https://img.shields.io/badge/Database-Room-darkgreen.svg)
 ![Networking](https://img.shields.io/badge/API-Retrofit%20%2B%20REST-blueviolet.svg)
@@ -10,7 +11,7 @@
 ![AI](https://img.shields.io/badge/AI-Google%20Gemini-sparkles.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-> **Trackly** is a production-grade native Android application for real-time package delivery and live logistics tracking engineered by **Yash Jaint**. Built using **Multi-View View Model (MVVM)** pattern and **Multi-Module Clean Architecture with Domain Use Cases**, Trackly leverages **Kotlin Coroutines**, **StateFlow**, **Room Database**, **Retrofit REST API Integration**, **Google Maps SDK**, and **Google Gemini AI Integration** to deliver a seamless real-time tracking experience for both customers and delivery drivers.
+> **Trackly** is a production-grade native Android application for real-time package delivery and live logistics tracking engineered by **Yash Jaint**. Built using **Multi-View View Model (MVVM)** pattern and **Multi-Module Clean Architecture with Domain Use Cases**, Trackly leverages **Dagger Hilt Dependency Injection**, **Kotlin Coroutines**, **StateFlow**, **Room Database**, **Retrofit REST API Integration**, **Google Maps SDK**, and **Google Gemini AI Integration** to deliver a seamless real-time tracking experience for both customers and delivery drivers.
 
 ---
 
