@@ -89,10 +89,21 @@ class AuthRepositoryImpl @Inject constructor(
                 Log.d(TAG, "Login successful. JWT token & User session stored.")
                 Resource.Success(user)
             } else {
-                val errorMsg = response.errorBody()?.string() ?: "Invalid email or password"
-                Log.w(TAG, "Login error: $errorMsg")
-                Resource.Error(errorMsg)
+                val rawError = response.errorBody()?.string() ?: ""
+                val parsedMsg = try {
+                    org.json.JSONObject(rawError).optString("message", rawError)
+                } catch (e: Exception) {
+                    if (rawError.isNotBlank()) rawError else "Invalid email or password"
+                }
+                Log.w(TAG, "Login error: $parsedMsg (raw: $rawError)")
+                Resource.Error(parsedMsg)
             }
+        } catch (e: java.net.SocketTimeoutException) {
+            Log.e(TAG, "Socket timeout during login", e)
+            Resource.Error("Request timed out. Please verify server connection.")
+        } catch (e: java.net.ConnectException) {
+            Log.e(TAG, "Connect exception during login", e)
+            Resource.Error("Could not connect to server at 192.168.0.111:8080.")
         } catch (e: Exception) {
             Log.e(TAG, "Network exception during login", e)
             Resource.Error(e.localizedMessage ?: "Network connection error")

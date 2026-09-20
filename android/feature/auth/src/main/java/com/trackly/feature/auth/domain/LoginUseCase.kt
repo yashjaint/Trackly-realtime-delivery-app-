@@ -9,12 +9,16 @@ class LoginUseCase @Inject constructor(
     private val authRepository: AuthRepository
 ) {
     suspend operator fun invoke(email: String, password: String): Resource<User> {
-        if (email.isBlank() || !email.contains("@")) {
-            return Resource.Error("Please enter a valid email address")
+        val trimmedEmail = email.trim()
+        if (trimmedEmail.isBlank()) {
+            return Resource.Error("Please enter your email address")
+        }
+        if (!trimmedEmail.contains("@") || !trimmedEmail.contains(".")) {
+            return Resource.Error("Please enter a valid email address (e.g., user@example.com)")
         }
         if (password.isBlank()) {
-            return Resource.Error("Password cannot be empty")
+            return Resource.Error("Please enter your password")
         }
-        return authRepository.login(email.trim(), password)
+        return authRepository.login(trimmedEmail, password)
     }
 }
