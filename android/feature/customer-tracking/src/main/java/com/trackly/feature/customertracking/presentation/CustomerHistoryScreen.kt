@@ -32,7 +32,8 @@ import java.util.Locale
 @Composable
 fun CustomerHistoryScreen(
     historyState: CustomerHistoryUiState,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onOrderClick: ((Order) -> Unit)? = null
 ) {
     val dateTimeFormat = remember { SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault()) }
 
@@ -79,7 +80,11 @@ fun CustomerHistoryScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(historyState.orders) { order ->
-                    CustomerOrderHistoryCard(order = order, dateFormat = dateTimeFormat)
+                    CustomerOrderHistoryCard(
+                        order = order,
+                        dateFormat = dateTimeFormat,
+                        onClick = onOrderClick
+                    )
                 }
             }
         }
@@ -89,9 +94,14 @@ fun CustomerHistoryScreen(
 @Composable
 fun CustomerOrderHistoryCard(
     order: Order,
-    dateFormat: SimpleDateFormat
+    dateFormat: SimpleDateFormat,
+    onClick: ((Order) -> Unit)? = null
 ) {
+    val isClickable = onClick != null && order.status != OrderStatus.DELIVERED && order.status != OrderStatus.CANCELLED
+
     Card(
+        onClick = { onClick?.invoke(order) },
+        enabled = isClickable,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceWhite),

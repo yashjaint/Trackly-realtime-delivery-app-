@@ -20,11 +20,14 @@ import javax.inject.Inject
 sealed class CustomerOrderUiState {
     object Idle : CustomerOrderUiState()
     object Loading : CustomerOrderUiState()
-    data class ActiveOrder(
-        val order: Order,
+    data class ActiveOrders(
+        val orders: List<Order>,
+        val selectedIndex: Int = 0,
         val driverLat: Double? = null,
         val driverLng: Double? = null
-    ) : CustomerOrderUiState()
+    ) : CustomerOrderUiState() {
+        val selectedOrder: Order get() = orders.getOrElse(selectedIndex.coerceIn(0, (orders.size - 1).coerceAtLeast(0))) { orders.first() }
+    }
     object NoActiveOrder : CustomerOrderUiState()
     data class Error(val message: String) : CustomerOrderUiState()
 }
@@ -66,21 +69,49 @@ class CustomerTrackingViewModel @Inject constructor(
     private var searchDeliveryJob: Job? = null
 
     fun fetchActiveOrder() {
-        Log.d(TAG, "Fetching active order for Customer...")
+        Log.d(TAG, "Fetching active orders for Customer...")
         _uiState.value = CustomerOrderUiState.Loading
         viewModelScope.launch {
-            when (val result = orderRepository.getActiveOrder()) {
+            when (val result = orderRepository.getActiveOrders()) {
                 is Resource.Success -> {
-                    Log.d(TAG, "Active order found: ${result.data.orderNumber}, status=${result.data.status}")
-                    _uiState.value = CustomerOrderUiState.ActiveOrder(order = result.data)
-                    startWebSocketObservation(result.data.id)
+                    if (result.data.isEmpty()) {
+                        Log.d(TAG, "No active orders found")
+                        _uiState.value = CustomerOrderUiState.NoActiveOrder
+                    } else {
+                        Log.d(TAG, "Found ${result.data.size} active orders")
+                        _uiState.value = CustomerOrderUiState.ActiveOrders(orders = result.data, selectedIndex = 0)
+                        startWebSocketObservation(result.data.first().id)
+                    }
                 }
                 is Resource.Error -> {
-                    Log.w(TAG, "No active order: ${result.message}")
+                    Log.w(TAG, "Error fetching active orders: ${result.message}")
                     _uiState.value = CustomerOrderUiState.NoActiveOrder
                 }
                 is Resource.Loading -> {}
             }
+        }
+    }
+
+    fun selectActiveOrder(index: Int) {
+        val current = _uiState.value as? CustomerOrderUiState.ActiveOrders ?: return
+        val safeIndex = index.coerceIn(0, current.orders.size - 1)
+        if (safeIndex != current.selectedIndex) {
+            val selected = current.orders[safeIndex]
+            Log.d(TAG, "Selected active order #${selected.orderNumber} (index $safeIndex)")
+            _uiState.value = current.copy(selectedIndex = safeIndex, driverLat = null, driverLng = null)
+            startWebSocketObservation(selected.id)
+        }
+    }
+
+    fun selectActiveOrderById(orderId: String) {
+        val current = _uiState.value as? CustomerOrderUiState.ActiveOrders
+        if (current != null) {
+            val foundIndex = current.orders.indexOfFirst { it.id == orderId }
+            if (foundIndex != -1) {
+                selectActiveOrder(foundIndex)
+            }
+        } else {
+            fetchActiveOrder()
         }
     }
 
@@ -130,7 +161,6 @@ class CustomerTrackingViewModel @Inject constructor(
         }
     }
 
-
     fun createCustomOrder(
         pickupAddress: String,
         pickupLat: Double,
@@ -155,8 +185,7 @@ class CustomerTrackingViewModel @Inject constructor(
             when (result) {
                 is Resource.Success -> {
                     Log.d(TAG, "Custom order created successfully: ${result.data.orderNumber}")
-                    _uiState.value = CustomerOrderUiState.ActiveOrder(order = result.data)
-                    startWebSocketObservation(result.data.id)
+                    fetchActiveOrder()
                     fetchOrderHistory()
                 }
                 is Resource.Error -> {
@@ -185,8 +214,8 @@ class CustomerTrackingViewModel @Inject constructor(
             Log.d(TAG, "Starting WebSocket observation for orderId=$orderId")
             webSocketClient.observeLocationUpdates(orderId).collect { frame ->
                 Log.d(TAG, "Received driver location via WebSocket: lat=${frame.lat}, lng=${frame.lng}")
-                val current = (_uiState.value as? CustomerOrderUiState.ActiveOrder)
-                if (current != null && current.order.id == frame.orderId) {
+                val current = (_uiState.value as? CustomerOrderUiState.ActiveOrders)
+                if (current != null && current.selectedOrder.id == frame.orderId) {
                     _uiState.value = current.copy(driverLat = frame.lat, driverLng = frame.lng)
                 }
             }

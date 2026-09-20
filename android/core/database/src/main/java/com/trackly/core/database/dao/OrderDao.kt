@@ -22,6 +22,9 @@ interface OrderDao {
     @Query("SELECT * FROM orders WHERE status NOT IN ('DELIVERED', 'CANCELLED') ORDER BY createdAt DESC LIMIT 1")
     suspend fun getActiveOrder(): OrderEntity?
 
+    @Query("SELECT * FROM orders WHERE status NOT IN ('DELIVERED', 'CANCELLED') ORDER BY createdAt DESC")
+    suspend fun getAllActiveOrders(): List<OrderEntity>
+
     @Query("SELECT * FROM orders ORDER BY createdAt DESC")
     fun getAllOrdersFlow(): Flow<List<OrderEntity>>
 

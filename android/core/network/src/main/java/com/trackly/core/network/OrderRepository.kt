@@ -18,6 +18,7 @@ import javax.inject.Singleton
 interface OrderRepository {
     suspend fun createOrder(pickupAddress: String, pickupLat: Double, pickupLng: Double, deliveryAddress: String, deliveryLat: Double, deliveryLng: Double): Resource<Order>
     suspend fun getActiveOrder(): Resource<Order>
+    suspend fun getActiveOrders(): Resource<List<Order>>
     suspend fun getOrderHistory(): Resource<List<Order>>
     suspend fun updateOrderStatus(orderId: String, newStatus: OrderStatus, remark: String?): Resource<Order>
     suspend fun assignDriver(orderId: String): Resource<Order>
@@ -116,6 +117,28 @@ class OrderRepositoryImpl @Inject constructor(
             } else {
                 Resource.Error("Offline mode: No cached order available")
             }
+        }
+    }
+
+    override suspend fun getActiveOrders(): Resource<List<Order>> = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Fetching all active orders...")
+        try {
+            val response = orderApi.getOrderHistory(authHeader = getAuthHeader())
+            val body = response.body()
+            if (response.isSuccessful && body != null) {
+                val allOrders = body.map { mapDtoToOrder(it) }
+                allOrders.forEach { orderDao.insertOrder(it.toEntity(isSynced = true)) }
+                val active = allOrders.filter { it.status != OrderStatus.DELIVERED && it.status != OrderStatus.CANCELLED }
+                Log.d(TAG, "Found ${active.size} active orders out of ${allOrders.size} total orders")
+                Resource.Success(active)
+            } else {
+                val cached = orderDao.getAllActiveOrders().map { it.toDomain() }
+                Resource.Success(cached)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Offline mode - fetching active orders from Room DB", e)
+            val cached = orderDao.getAllActiveOrders().map { it.toDomain() }
+            Resource.Success(cached)
         }
     }
 

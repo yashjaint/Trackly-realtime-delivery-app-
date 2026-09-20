@@ -58,6 +58,8 @@ fun CustomerOrderScreen(
         onConfirmOrder = { pAddr, pLat, pLng, dAddr, dLat, dLng ->
             viewModel.createCustomOrder(pAddr, pLat, pLng, dAddr, dLat, dLng)
         },
+        onSelectActiveOrder = { index -> viewModel.selectActiveOrder(index) },
+        onSelectActiveOrderById = { orderId -> viewModel.selectActiveOrderById(orderId) },
         onRefreshClick = { viewModel.fetchActiveOrder() },
         onRefreshHistory = { viewModel.fetchOrderHistory() },
         onOpenAiChat = onOpenAiChat,
@@ -76,6 +78,8 @@ fun CustomerOrderScreenContent(
     onSearchPickup: (String) -> Unit = {},
     onSearchDelivery: (String) -> Unit = {},
     onConfirmOrder: (pAddr: String, pLat: Double, pLng: Double, dAddr: String, dLat: Double, dLng: Double) -> Unit = { _, _, _, _, _, _ -> },
+    onSelectActiveOrder: (Int) -> Unit = {},
+    onSelectActiveOrderById: (String) -> Unit = {},
     onRefreshClick: () -> Unit,
     onRefreshHistory: () -> Unit,
     onOpenAiChat: (orderId: String) -> Unit,
@@ -103,11 +107,11 @@ fun CustomerOrderScreenContent(
 
 
     if (showAiBottomSheet) {
-        val activeOrder = (uiState as? CustomerOrderUiState.ActiveOrder)?.order
-        val driverLat = (uiState as? CustomerOrderUiState.ActiveOrder)?.driverLat
-        val driverLng = (uiState as? CustomerOrderUiState.ActiveOrder)?.driverLng
+        val selectedOrder = (uiState as? CustomerOrderUiState.ActiveOrders)?.selectedOrder
+        val driverLat = (uiState as? CustomerOrderUiState.ActiveOrders)?.driverLat
+        val driverLng = (uiState as? CustomerOrderUiState.ActiveOrders)?.driverLng
         com.trackly.feature.aiassistant.presentation.AiAssistantBottomSheet(
-            order = activeOrder,
+            order = selectedOrder,
             driverLat = driverLat,
             driverLng = driverLng,
             onDismiss = { showAiBottomSheet = false }
@@ -143,7 +147,7 @@ fun CustomerOrderScreenContent(
         topBar = {
             Column {
                 TopAppBar(
-                    title = { Text(if (selectedTabIndex == 0) "Active Delivery" else "Order History", fontWeight = FontWeight.Bold) },
+                    title = { Text("Active Delivery", fontWeight = FontWeight.Bold) },
                     actions = {
                         IconButton(onClick = { showCreateOrderSheet = true }) {
                             Icon(
@@ -197,7 +201,13 @@ fun CustomerOrderScreenContent(
             if (selectedTabIndex == 1) {
                 CustomerHistoryScreen(
                     historyState = historyState,
-                    onRefresh = onRefreshHistory
+                    onRefresh = onRefreshHistory,
+                    onOrderClick = { order ->
+                        if (order.status != OrderStatus.DELIVERED && order.status != OrderStatus.CANCELLED) {
+                            selectedTabIndex = 0
+                            onSelectActiveOrderById(order.id)
+                        }
+                    }
                 )
             } else {
                 when (uiState) {
@@ -245,69 +255,31 @@ fun CustomerOrderScreenContent(
                     }
                 }
 
-                is CustomerOrderUiState.ActiveOrder -> {
-                    val order = uiState.order
+                is CustomerOrderUiState.ActiveOrders -> {
+                    val selectedOrder = uiState.selectedOrder
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp)
                     ) {
-                        // Order Header Card
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = order.orderNumber,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TextPrimaryCharcoal
-                                    )
-                                    Badge(
-                                        containerColor = OceanTealHighlight,
-                                        contentColor = SurfaceWhite
-                                    ) {
-                                        Text(order.status.name, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Store, contentDescription = null, tint = DeepOceanSecondary, modifier = Modifier.size(20.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = order.pickupAddress, style = MaterialTheme.typography.bodyMedium)
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = TealBluePrimary, modifier = Modifier.size(20.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = order.deliveryAddress, style = MaterialTheme.typography.bodyMedium)
-                                }
-                            }
-                        }
+                        // Swipable Header Cards
+                        ActiveOrderCardsPager(
+                            orders = uiState.orders,
+                            selectedIndex = uiState.selectedIndex,
+                            onOrderSelected = onSelectActiveOrder
+                        )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Live Map View
+                        // Live Map View for Selected Order
                         com.trackly.core.common.ui.LiveTrackingMapView(
-                            pickupLat = order.pickupLat ?: 17.3850,
-                            pickupLng = order.pickupLng ?: 78.4867,
-                            pickupName = order.pickupAddress,
-                            deliveryLat = order.deliveryLat ?: 17.4401,
-                            deliveryLng = order.deliveryLng ?: 78.3489,
-                            deliveryName = order.deliveryAddress,
+                            pickupLat = selectedOrder.pickupLat ?: 17.3850,
+                            pickupLng = selectedOrder.pickupLng ?: 78.4867,
+                            pickupName = selectedOrder.pickupAddress,
+                            deliveryLat = selectedOrder.deliveryLat ?: 17.4401,
+                            deliveryLng = selectedOrder.deliveryLng ?: 78.3489,
+                            deliveryName = selectedOrder.deliveryAddress,
                             driverLat = uiState.driverLat,
                             driverLng = uiState.driverLng
                         )
@@ -331,7 +303,7 @@ fun CustomerOrderScreenContent(
                                 Column {
                                     Text("Estimated Arrival", style = MaterialTheme.typography.bodyMedium, color = TextSecondaryGrey)
                                     Text(
-                                        text = "${order.estimatedDurationMinutes ?: 25} mins",
+                                        text = "${selectedOrder.estimatedDurationMinutes ?: 25} mins",
                                         fontSize = 24.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = TealBluePrimary
@@ -341,7 +313,7 @@ fun CustomerOrderScreenContent(
                                 Button(
                                     onClick = {
                                         showAiBottomSheet = true
-                                        onOpenAiChat(order.id)
+                                        onOpenAiChat(selectedOrder.id)
                                     },
                                     shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = DeepOceanSecondary)
@@ -381,11 +353,11 @@ fun CustomerOrderScreenContent(
                                     OrderStatus.DELIVERED
                                 )
 
-                                val currentOrdinal = order.status.ordinal
+                                val currentOrdinal = selectedOrder.status.ordinal
 
                                 milestones.forEachIndexed { index, status ->
                                     val isCompleted = status.ordinal <= currentOrdinal
-                                    val isCurrent = status == order.status
+                                    val isCurrent = status == selectedOrder.status
 
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
@@ -433,27 +405,188 @@ fun CustomerOrderScreenContent(
 }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun ActiveOrderCardsPager(
+    orders: List<Order>,
+    selectedIndex: Int,
+    onOrderSelected: (Int) -> Unit
+) {
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+        initialPage = selectedIndex.coerceIn(0, (orders.size - 1).coerceAtLeast(0)),
+        pageCount = { orders.size }
+    )
+
+    LaunchedEffect(pagerState.currentPage) {
+        onOrderSelected(pagerState.currentPage)
+    }
+
+    LaunchedEffect(selectedIndex) {
+        if (selectedIndex != pagerState.currentPage && selectedIndex in orders.indices) {
+            pagerState.animateScrollToPage(selectedIndex)
+        }
+    }
+
+    Column {
+        if (orders.size > 1) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "ACTIVE DELIVERIES (${orders.size})",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = DeepOceanSecondary
+                )
+                Text(
+                    text = "Order ${pagerState.currentPage + 1} of ${orders.size}  Swipe ➔",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TealBluePrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth(),
+            pageSpacing = 12.dp
+        ) { page ->
+            val order = orders[page]
+            OrderHeaderCard(
+                order = order,
+                isSelected = page == pagerState.currentPage
+            )
+        }
+
+        if (orders.size > 1) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(orders.size) { index ->
+                    val isSelected = index == pagerState.currentPage
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .height(6.dp)
+                            .width(if (isSelected) 20.dp else 6.dp)
+                            .background(
+                                color = if (isSelected) TealBluePrimary else DividerLight,
+                                shape = CircleShape
+                            )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OrderHeaderCard(
+    order: Order,
+    isSelected: Boolean = true
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, TealBluePrimary) else androidx.compose.foundation.BorderStroke(1.dp, DividerLight),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 3.dp else 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = order.orderNumber,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimaryCharcoal
+                )
+                Badge(
+                    containerColor = OceanTealHighlight,
+                    contentColor = SurfaceWhite
+                ) {
+                    Text(
+                        text = order.status.name,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Store,
+                    contentDescription = null,
+                    tint = DeepOceanSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = order.pickupAddress,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = TealBluePrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = order.deliveryAddress,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true, name = "Customer Active Order Preview")
 @Composable
 fun CustomerOrderScreenPreview() {
     TracklyTheme {
         CustomerOrderScreenContent(
-            uiState = CustomerOrderUiState.ActiveOrder(
-                Order(
-                    id = "order-123",
-                    orderNumber = "ORD-849201",
-                    customerId = "cust-1",
-                    driverId = "driver-1",
-                    status = OrderStatus.OUT_FOR_DELIVERY,
-                    pickupAddress = "Bistro Restaurant, Market St",
-                    pickupLat = 37.7749,
-                    pickupLng = -122.4194,
-                    deliveryAddress = "Customer Flat, 5th Ave",
-                    deliveryLat = 37.7833,
-                    deliveryLng = -122.4167,
-                    estimatedDurationMinutes = 12,
-                    createdAt = System.currentTimeMillis(),
-                    updatedAt = System.currentTimeMillis()
+            uiState = CustomerOrderUiState.ActiveOrders(
+                orders = listOf(
+                    Order(
+                        id = "order-123",
+                        orderNumber = "ORD-849201",
+                        customerId = "cust-1",
+                        driverId = "driver-1",
+                        status = OrderStatus.OUT_FOR_DELIVERY,
+                        pickupAddress = "Bistro Restaurant, Market St",
+                        pickupLat = 37.7749,
+                        pickupLng = -122.4194,
+                        deliveryAddress = "Customer Flat, 5th Ave",
+                        deliveryLat = 37.7833,
+                        deliveryLng = -122.4167,
+                        estimatedDurationMinutes = 12,
+                        createdAt = System.currentTimeMillis(),
+                        updatedAt = System.currentTimeMillis()
+                    )
                 )
             ),
             historyState = CustomerHistoryUiState(),
