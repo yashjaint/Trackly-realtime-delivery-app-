@@ -8,7 +8,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.AutoAwesome
+
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Store
@@ -36,6 +38,9 @@ fun CustomerOrderScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val historyState by viewModel.historyState.collectAsState()
+    val pickupSuggestions by viewModel.pickupSuggestions.collectAsState()
+    val deliverySuggestions by viewModel.deliverySuggestions.collectAsState()
+    val isSubmittingOrder by viewModel.isSubmittingOrder.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.fetchActiveOrder()
@@ -45,7 +50,14 @@ fun CustomerOrderScreen(
     CustomerOrderScreenContent(
         uiState = uiState,
         historyState = historyState,
-        onCreateOrderClick = { viewModel.createSampleOrder() },
+        pickupSuggestions = pickupSuggestions,
+        deliverySuggestions = deliverySuggestions,
+        isSubmittingOrder = isSubmittingOrder,
+        onSearchPickup = { viewModel.searchPickupAddress(it) },
+        onSearchDelivery = { viewModel.searchDeliveryAddress(it) },
+        onConfirmOrder = { pAddr, pLat, pLng, dAddr, dLat, dLng ->
+            viewModel.createCustomOrder(pAddr, pLat, pLng, dAddr, dLat, dLng)
+        },
         onRefreshClick = { viewModel.fetchActiveOrder() },
         onRefreshHistory = { viewModel.fetchOrderHistory() },
         onOpenAiChat = onOpenAiChat,
@@ -58,7 +70,12 @@ fun CustomerOrderScreen(
 fun CustomerOrderScreenContent(
     uiState: CustomerOrderUiState,
     historyState: CustomerHistoryUiState,
-    onCreateOrderClick: () -> Unit,
+    pickupSuggestions: List<com.trackly.core.model.AddressSearchResult> = emptyList(),
+    deliverySuggestions: List<com.trackly.core.model.AddressSearchResult> = emptyList(),
+    isSubmittingOrder: Boolean = false,
+    onSearchPickup: (String) -> Unit = {},
+    onSearchDelivery: (String) -> Unit = {},
+    onConfirmOrder: (pAddr: String, pLat: Double, pLng: Double, dAddr: String, dLat: Double, dLng: Double) -> Unit = { _, _, _, _, _, _ -> },
     onRefreshClick: () -> Unit,
     onRefreshHistory: () -> Unit,
     onOpenAiChat: (orderId: String) -> Unit,
@@ -67,6 +84,23 @@ fun CustomerOrderScreenContent(
     var selectedTabIndex by remember { mutableStateOf(0) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showAiBottomSheet by remember { mutableStateOf(false) }
+    var showCreateOrderSheet by remember { mutableStateOf(false) }
+
+    if (showCreateOrderSheet) {
+        CreateOrderBottomSheet(
+            isSubmitting = isSubmittingOrder,
+            pickupSuggestions = pickupSuggestions,
+            deliverySuggestions = deliverySuggestions,
+            onSearchPickup = onSearchPickup,
+            onSearchDelivery = onSearchDelivery,
+            onConfirmOrder = { pAddr, pLat, pLng, dAddr, dLat, dLng ->
+                showCreateOrderSheet = false
+                onConfirmOrder(pAddr, pLat, pLng, dAddr, dLat, dLng)
+            },
+            onDismiss = { showCreateOrderSheet = false }
+        )
+    }
+
 
     if (showAiBottomSheet) {
         val activeOrder = (uiState as? CustomerOrderUiState.ActiveOrder)?.order
@@ -111,6 +145,13 @@ fun CustomerOrderScreenContent(
                 TopAppBar(
                     title = { Text(if (selectedTabIndex == 0) "Active Delivery" else "Order History", fontWeight = FontWeight.Bold) },
                     actions = {
+                        IconButton(onClick = { showCreateOrderSheet = true }) {
+                            Icon(
+                                imageVector = Icons.Default.AddCircleOutline,
+                                contentDescription = "New Order",
+                                tint = SurfaceWhite
+                            )
+                        }
                         IconButton(onClick = { showLogoutDialog = true }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ExitToApp,
@@ -187,22 +228,23 @@ fun CustomerOrderScreenContent(
                             color = TextPrimaryCharcoal
                         )
                         Text(
-                            text = "You don't have any ongoing orders right now.",
+                            text = "Create a custom order with live address search.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondaryGrey
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(
-                            onClick = onCreateOrderClick,
+                            onClick = { showCreateOrderSheet = true },
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = TealBluePrimary)
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Place Sample Order", fontWeight = FontWeight.Bold)
+                            Text("Place Delivery Order", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
+
                 is CustomerOrderUiState.ActiveOrder -> {
                     val order = uiState.order
                     Column(
@@ -415,10 +457,10 @@ fun CustomerOrderScreenPreview() {
                 )
             ),
             historyState = CustomerHistoryUiState(),
-            onCreateOrderClick = {},
             onRefreshClick = {},
             onRefreshHistory = {},
             onOpenAiChat = {}
         )
     }
 }
+

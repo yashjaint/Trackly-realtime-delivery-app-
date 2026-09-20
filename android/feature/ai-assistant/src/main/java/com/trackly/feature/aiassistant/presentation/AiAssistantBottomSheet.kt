@@ -131,22 +131,23 @@ fun AiAssistantBottomSheet(
                             Text(
                                 text = text,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = DeepOceanSecondary
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimaryCharcoal
                             )
                         },
                         colors = AssistChipDefaults.assistChipColors(
-                            containerColor = TealBluePrimary.copy(alpha = 0.12f),
-                            labelColor = DeepOceanSecondary
+                            containerColor = Color(0xFFE0F2F1),
+                            labelColor = TextPrimaryCharcoal
                         ),
                         border = AssistChipDefaults.assistChipBorder(
                             enabled = true,
-                            borderColor = TealBluePrimary.copy(alpha = 0.35f)
+                            borderColor = TealBluePrimary
                         ),
                         shape = RoundedCornerShape(16.dp)
                     )
                 }
             }
+
 
             // Message List
             LazyColumn(

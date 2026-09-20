@@ -93,4 +93,24 @@ object NetworkModule {
     fun provideDriverApi(retrofit: Retrofit): com.trackly.core.network.DriverApi {
         return retrofit.create(com.trackly.core.network.DriverApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideGeocodingApi(okHttpClient: OkHttpClient): com.trackly.core.network.GeocodingApi {
+        return Retrofit.Builder()
+            .baseUrl("https://nominatim.openstreetmap.org/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(com.trackly.core.network.GeocodingApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAddressSearchRepository(
+        geocodingApi: com.trackly.core.network.GeocodingApi
+    ): com.trackly.core.network.AddressSearchRepository {
+        return com.trackly.core.network.AddressSearchRepositoryImpl(geocodingApi)
+    }
 }
+

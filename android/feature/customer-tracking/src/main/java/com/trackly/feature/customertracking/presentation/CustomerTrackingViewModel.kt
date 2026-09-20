@@ -4,7 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.trackly.core.common.network.Resource
+import com.trackly.core.model.AddressSearchResult
 import com.trackly.core.model.Order
+import com.trackly.core.network.AddressSearchRepository
 import com.trackly.core.network.OrderRepository
 import com.trackly.core.websocket.TrackingWebSocketClient
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,7 +38,8 @@ data class CustomerHistoryUiState(
 @HiltViewModel
 class CustomerTrackingViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
-    private val webSocketClient: TrackingWebSocketClient
+    private val webSocketClient: TrackingWebSocketClient,
+    private val addressSearchRepository: AddressSearchRepository
 ) : ViewModel() {
 
     companion object {
@@ -49,7 +52,18 @@ class CustomerTrackingViewModel @Inject constructor(
     private val _historyState = MutableStateFlow(CustomerHistoryUiState())
     val historyState: StateFlow<CustomerHistoryUiState> = _historyState.asStateFlow()
 
+    private val _pickupSuggestions = MutableStateFlow<List<AddressSearchResult>>(emptyList())
+    val pickupSuggestions: StateFlow<List<AddressSearchResult>> = _pickupSuggestions.asStateFlow()
+
+    private val _deliverySuggestions = MutableStateFlow<List<AddressSearchResult>>(emptyList())
+    val deliverySuggestions: StateFlow<List<AddressSearchResult>> = _deliverySuggestions.asStateFlow()
+
+    private val _isSubmittingOrder = MutableStateFlow(false)
+    val isSubmittingOrder: StateFlow<Boolean> = _isSubmittingOrder.asStateFlow()
+
     private var webSocketJob: Job? = null
+    private var searchPickupJob: Job? = null
+    private var searchDeliveryJob: Job? = null
 
     fun fetchActiveOrder() {
         Log.d(TAG, "Fetching active order for Customer...")
@@ -88,32 +102,81 @@ class CustomerTrackingViewModel @Inject constructor(
         }
     }
 
-    fun createSampleOrder() {
-        Log.d(TAG, "Creating sample order for Customer...")
+    fun searchPickupAddress(query: String) {
+        searchPickupJob?.cancel()
+        val trimmed = query.trim()
+        if (trimmed.length < 2) {
+            _pickupSuggestions.value = emptyList()
+            return
+        }
+        searchPickupJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(400)
+            val results = addressSearchRepository.searchAddress(trimmed)
+            _pickupSuggestions.value = results
+        }
+    }
+
+    fun searchDeliveryAddress(query: String) {
+        searchDeliveryJob?.cancel()
+        val trimmed = query.trim()
+        if (trimmed.length < 2) {
+            _deliverySuggestions.value = emptyList()
+            return
+        }
+        searchDeliveryJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(400)
+            val results = addressSearchRepository.searchAddress(trimmed)
+            _deliverySuggestions.value = results
+        }
+    }
+
+
+    fun createCustomOrder(
+        pickupAddress: String,
+        pickupLat: Double,
+        pickupLng: Double,
+        deliveryAddress: String,
+        deliveryLat: Double,
+        deliveryLng: Double
+    ) {
+        Log.d(TAG, "Creating custom order: pickup=$pickupAddress, delivery=$deliveryAddress")
+        _isSubmittingOrder.value = true
         _uiState.value = CustomerOrderUiState.Loading
         viewModelScope.launch {
             val result = orderRepository.createOrder(
-                pickupAddress = "Italian Bistro, 100 Market St",
-                pickupLat = 37.7749,
-                pickupLng = -122.4194,
-                deliveryAddress = "Customer Residence, 742 Evergreen Ter",
-                deliveryLat = 37.7833,
-                deliveryLng = -122.4167
+                pickupAddress = pickupAddress,
+                pickupLat = pickupLat,
+                pickupLng = pickupLng,
+                deliveryAddress = deliveryAddress,
+                deliveryLat = deliveryLat,
+                deliveryLng = deliveryLng
             )
+            _isSubmittingOrder.value = false
             when (result) {
                 is Resource.Success -> {
-                    Log.d(TAG, "Sample order created: ${result.data.orderNumber}")
+                    Log.d(TAG, "Custom order created successfully: ${result.data.orderNumber}")
                     _uiState.value = CustomerOrderUiState.ActiveOrder(order = result.data)
                     startWebSocketObservation(result.data.id)
                     fetchOrderHistory()
                 }
                 is Resource.Error -> {
-                    Log.e(TAG, "Sample order creation failed: ${result.message}")
+                    Log.e(TAG, "Custom order creation failed: ${result.message}")
                     _uiState.value = CustomerOrderUiState.Error(result.message)
                 }
                 is Resource.Loading -> {}
             }
         }
+    }
+
+    fun createSampleOrder() {
+        createCustomOrder(
+            pickupAddress = "Central Bakery, 10th Ave",
+            pickupLat = 37.7749,
+            pickupLng = -122.4194,
+            deliveryAddress = "Downtown Office, Suite 400",
+            deliveryLat = 37.7833,
+            deliveryLng = -122.4167
+        )
     }
 
     private fun startWebSocketObservation(orderId: String) {
@@ -133,5 +196,7 @@ class CustomerTrackingViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         webSocketJob?.cancel()
+        searchPickupJob?.cancel()
+        searchDeliveryJob?.cancel()
     }
 }

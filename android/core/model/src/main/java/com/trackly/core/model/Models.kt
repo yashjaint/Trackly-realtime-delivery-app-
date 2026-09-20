@@ -60,3 +60,10 @@ data class DriverLocation(
     val speed: Double,
     val bearing: Double
 )
+
+data class AddressSearchResult(
+    val displayName: String,
+    val latitude: Double,
+    val longitude: Double
+)
+
