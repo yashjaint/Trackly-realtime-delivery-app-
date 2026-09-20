@@ -8,7 +8,7 @@
 ![Antigravity](https://img.shields.io/badge/Developed%20With-Google%20Antigravity-4285F4.svg?logo=google)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-> **Trackly** is a feature-packed, native Android application engineered by **Yash Jaint**. Built using **MVVM (Model-View-ViewModel)** and **Multi-Module Clean Architecture**, Trackly provides a seamless real-time logistics experience for both customers and drivers, featuring live Google Maps tracking, 60fps vehicle marker smoothing, automated address search suggestions, dynamic route ETAs, an AI-powered assistant (Gemini API), and profile management with active delivery deletion safeguards.
+> **Trackly** is a production-grade native Android application for real-time package delivery and live logistics tracking engineered by **Yash Jaint**. Built using **MVVM (Model-View-ViewModel)** UI pattern and **Multi-Module Clean Architecture with Domain Use Cases**, Trackly provides a seamless delivery tracking experience featuring live Google Maps SDK integration, 60fps vehicle marker smoothing, automated address search suggestions, dynamic route ETAs, an interactive Gemini AI assistant, and dedicated portals for customers and delivery drivers.
 
 ---
 
@@ -25,25 +25,25 @@
 
 ## ✨ Core Features & Application Portals
 
-Trackly offers two distinct portals tailored for Customers and Drivers:
+Trackly provides tailored experiences for both Customers and Delivery Drivers:
 
 ### 📦 Customer Portal
-- **Order Creation with Address Autocomplete**: Easily create delivery orders with real-time pickup and delivery location suggestions powered by OpenStreetMap search autocomplete.
-- **Live Google Maps Tracking**: Watch your assigned driver move on the map in real time with custom pickup/dropoff markers, route polyline paths, and dynamic arrival ETA calculations.
-- **Stage-by-Stage Delivery Timeline**: Track your order through all lifecycle stages (`CREATED` $\rightarrow$ `CONFIRMED` $\rightarrow$ `PREPARING` $\rightarrow$ `READY_FOR_PICKUP` $\rightarrow$ `PICKED_UP` $\rightarrow$ `OUT_FOR_DELIVERY` $\rightarrow$ `DELIVERED`).
-- **Order History**: Browse active orders or swipe between multiple ongoing orders and review past delivery history.
+- **Order Creation with Address Autocomplete**: Create delivery orders with real-time pickup and delivery location suggestions powered by OpenStreetMap search autocomplete.
+- **Live Google Maps Tracking**: Watch your assigned delivery driver move on the map in real time with custom pickup/dropoff markers, route polyline paths, and dynamic arrival ETA calculations.
+- **Stage-by-Stage Delivery Timeline**: Track your package through all lifecycle stages (`CREATED` $\rightarrow$ `CONFIRMED` $\rightarrow$ `PREPARING` $\rightarrow$ `READY_FOR_PICKUP` $\rightarrow$ `PICKED_UP` $\rightarrow$ `OUT_FOR_DELIVERY` $\rightarrow$ `DELIVERED`).
+- **Order History & Active Cards**: Swipe between active ongoing orders or review past order history.
 
-### 🚚 Driver Portal
-- **Job Acceptance & Status Control**: View available delivery jobs, accept assignments, and update delivery milestones step-by-step.
+### 🚚 Delivery Driver Portal
+- **Job Acceptance & Milestone Control**: View available delivery jobs, accept assignments, and update package delivery status milestones step-by-step.
 - **Background Location Broadcasting**: Broadcast live driver GPS coordinates to tracking customers via a persistent Android Foreground Service.
 - **Delivery Job History**: View past completed delivery records.
 
 ### 🤖 Integrated Gemini AI Assistant
 - Interactive bottom-sheet AI assistant allowing customers to ask natural language questions about their package (e.g., *"Where is my package right now?"*), powered by Google Gemini API.
 
-### 👤 Account Management & Safety Safeguards
-- **Profile Customization**: Edit your Full Name and Vehicle Number (for drivers) via a 3-dot overflow menu.
-- **Conditional Account Deletion**: Smart safeguards block account deletion if a customer or driver has active deliveries in progress. Account deletion is only permitted when no active orders exist.
+### 👤 Profile & Account Management
+- **Profile Customization**: View and edit your Full Name and Vehicle Number via a 3-dot overflow menu.
+- **Account Deletion Safeguards**: Account deletion rules check for active orders or delivery jobs before processing.
 
 ---
 
@@ -51,11 +51,11 @@ Trackly offers two distinct portals tailored for Customers and Drivers:
 
 Trackly is engineered following modern Android development guidelines:
 
-| Layer | Technologies & Libraries Used |
+| Layer | Technologies & Frameworks Used |
 | :--- | :--- |
 | **UI Framework** | Jetpack Compose, Material Design 3, Custom Glassmorphism UI tokens |
 | **UI Pattern** | **MVVM (Model-View-ViewModel)** with `StateFlow` and `Coroutines` |
-| **Architecture** | **Clean Architecture** (Domain Repositories & Data Implementations) |
+| **Architecture** | **Clean Architecture** (Domain Layer **Use Cases** & Repositories + Data Layer Implementations) |
 | **Modularization** | **Multi-Module Gradle** (`:feature:customer-tracking`, `:feature:driver-delivery`, `:feature:ai-assistant`, `:feature:auth`, `:core:network`, `:core:location`, `:core:websocket`, `:core:model`, `:core:common`) |
 | **Dependency Injection** | Dagger Hilt |
 | **Maps & Location** | Google Maps SDK for Android, FusedLocationProviderClient, Android Foreground Service |
@@ -65,22 +65,22 @@ Trackly is engineered following modern Android development guidelines:
 
 ---
 
-## 📁 Android Module Structure
+## 📁 Android Module & Clean Architecture Layout
 
 ```
 Trackly/
 ├── android/
 │   ├── app/                   # Navigation Host & Hilt Application Entrypoint
-│   ├── feature/               # UI Feature Modules (MVVM)
+│   ├── feature/               # UI Feature Modules (MVVM + Domain Use Cases)
 │   │   ├── customer-tracking/ # Active Tracking, Order Timeline & Address Autocomplete
-│   │   ├── driver-delivery/   # Driver Job Portal & Status Management
-│   │   ├── ai-assistant/      # Gemini AI Chatbot Sheet
-│   │   └── auth/              # Login & Registration Screens
-│   └── core/                  # Core Layer (Domain / Data)
-│       ├── network/           # Domain Repositories & Data Impl Classes
+│   │   ├── driver-delivery/   # Delivery Driver Job Portal & Status Management
+│   │   ├── ai-assistant/      # Gemini AI Chatbot Sheet & AskAiAssistantUseCase
+│   │   └── auth/              # Login & Register Screens, LoginUseCase & RegisterUseCase
+│   └── core/                  # Core Layer (Domain Repositories & Data Implementations)
+│       ├── network/           # Domain Repository Contracts & Data Repository Impls
 │       ├── location/          # Foreground Service & Location Provider
 │       ├── websocket/         # Real-Time WebSocket Location Engine
-│       ├── model/             # Domain Models & Enums
+│       ├── model/             # Shared Domain Models & Enums
 │       └── common/            # Design System, Google Maps View & Dialogs
 ├── LICENSE                    # MIT Copyright License (Yash Jaint)
 └── README.md                  # Project Documentation
