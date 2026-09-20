@@ -3,12 +3,14 @@
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0-blue.svg?logo=kotlin)
 ![Android](https://img.shields.io/badge/Android-Jetpack%20Compose-green.svg?logo=android)
 ![Architecture](https://img.shields.io/badge/Architecture-MVVM%20%2B%20Clean%20%2B%20Multi--Module-purple.svg)
+![Concurrency](https://img.shields.io/badge/Concurrency-Coroutines%20%2B%20StateFlow-orange.svg)
+![Database](https://img.shields.io/badge/Database-Room-darkgreen.svg)
+![Networking](https://img.shields.io/badge/API-Retrofit%20%2B%20REST-blueviolet.svg)
 ![RealTime](https://img.shields.io/badge/RealTime-WebSockets-red.svg)
 ![AI](https://img.shields.io/badge/AI-Google%20Gemini-sparkles.svg)
-![Antigravity](https://img.shields.io/badge/Developed%20With-Google%20Antigravity-4285F4.svg?logo=google)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-> **Trackly** is a production-grade native Android application for real-time package delivery and live logistics tracking engineered by **Yash Jaint**. Built using **MVVM (Model-View-ViewModel)** UI pattern and **Multi-Module Clean Architecture with Domain Use Cases**, Trackly provides a seamless delivery tracking experience featuring live Google Maps SDK integration, 60fps vehicle marker smoothing, automated address search suggestions, dynamic route ETAs, an interactive Gemini AI assistant, and dedicated portals for customers and delivery drivers.
+> **Trackly** is a production-grade native Android application for real-time package delivery and live logistics tracking engineered by **Yash Jaint**. Built using **Multi-View View Model (MVVM)** pattern and **Multi-Module Clean Architecture with Domain Use Cases**, Trackly leverages **Kotlin Coroutines**, **StateFlow**, **Room Database**, **Retrofit REST API Integration**, **Google Maps SDK**, and **Google Gemini AI Integration** to deliver a seamless real-time tracking experience for both customers and delivery drivers.
 
 ---
 
@@ -54,14 +56,14 @@ Trackly is engineered following modern Android development guidelines:
 | Layer | Technologies & Frameworks Used |
 | :--- | :--- |
 | **UI Framework** | Jetpack Compose, Material Design 3, Custom Glassmorphism UI tokens |
-| **UI Pattern** | **MVVM (Model-View-ViewModel)** with `StateFlow` and `Coroutines` |
+| **UI Pattern** | **Multi-View View Model (MVVM)** with `StateFlow` and `Coroutines` |
 | **Architecture** | **Clean Architecture** (Domain Layer **Use Cases** & Repositories + Data Layer Implementations) |
-| **Modularization** | **Multi-Module Gradle** (`:feature:customer-tracking`, `:feature:driver-delivery`, `:feature:ai-assistant`, `:feature:auth`, `:core:network`, `:core:location`, `:core:websocket`, `:core:model`, `:core:common`) |
+| **Modularization** | **Multi-Module Gradle** (`:feature:customer-tracking`, `:feature:driver-delivery`, `:feature:ai-assistant`, `:feature:auth`, `:core:network`, `:core:location`, `:core:websocket`, `:core:database`, `:core:model`, `:core:common`) |
 | **Dependency Injection** | Dagger Hilt |
+| **Local Persistence** | **Room Database** (Entities, DAOs, Local Caching) |
 | **Maps & Location** | Google Maps SDK for Android, FusedLocationProviderClient, Android Foreground Service |
-| **Real-Time Data** | WebSockets Client (`TrackingWebSocketClient.kt`), Retrofit, OkHttp3 |
-| **AI Integration** | Google Gemini API (Firebase AI Logic / REST) |
-| **AI Pair Programming** | Google Antigravity Agentic AI Framework |
+| **Networking & APIs** | **Retrofit**, OkHttp3 REST API Integration, Ktor WebSockets Client |
+| **AI Integration** | **Google Gemini API Integration** |
 
 ---
 
@@ -77,7 +79,8 @@ Trackly/
 │   │   ├── ai-assistant/      # Gemini AI Chatbot Sheet & AskAiAssistantUseCase
 │   │   └── auth/              # Login & Register Screens, LoginUseCase & RegisterUseCase
 │   └── core/                  # Core Layer (Domain Repositories & Data Implementations)
-│       ├── network/           # Domain Repository Contracts & Data Repository Impls
+│       ├── network/           # Retrofit REST API Interfaces & Data Repository Impls
+│       ├── database/          # Room Database (DAOs & Local Entities)
 │       ├── location/          # Foreground Service & Location Provider
 │       ├── websocket/         # Real-Time WebSocket Location Engine
 │       ├── model/             # Shared Domain Models & Enums
