@@ -38,8 +38,11 @@ Trackly offers two distinct portals tailored for Customers and Drivers:
 - **Background Location Broadcasting**: Broadcast live driver GPS coordinates to tracking customers via a persistent Android Foreground Service.
 - **Delivery Job History**: View past completed delivery records.
 
-### 🤖 Integrated Gemini AI Assistant
-- Interactive bottom-sheet AI assistant allowing customers to ask natural language questions about their package (e.g., *"Where is my package right now?"*), powered by Google Gemini API.
+### 🤖 Context-Aware Gemini AI Assistant
+- **Real-Time Order Context Injection**: Dynamically injects live order telemetry (Order Title, Description, Status Stage, Pickup/Delivery Addresses, Driver Name, and ETA) into the prompt context, allowing the AI to answer package-specific questions accurately.
+- **Interactive Jetpack Compose Bottom Sheet UI**: Custom modal bottom sheet interface (`:feature:ai-assistant`) featuring conversational message bubbles, dynamic loading indicators, auto-scroll behaviors, and `StateFlow` reactive updates.
+- **Natural Language Inquiry**: Enables customers to ask conversational questions (e.g., *"Where is my package right now?"*, *"Who is delivering my order?"*, or *"Why is my order taking time?"*) and receive human-like, contextual responses powered by the Google Gemini API.
+- **Modular Architecture**: Isolated into a dedicated `:feature:ai-assistant` Gradle module adhering to MVVM and Repository patterns for clean testability.
 
 ### 👤 Account Management & Safety Safeguards
 - **Profile Customization**: Edit your Full Name and Vehicle Number (for drivers) via a 3-dot overflow menu.
