@@ -33,6 +33,13 @@ class OrderService {
 
         logger.info("Creating new order for customerId={}, orderNumber={}", customerId, orderNum)
 
+        val estimatedMins = calculateEstimatedDurationMinutes(
+            request.pickupLat,
+            request.pickupLng,
+            request.deliveryLat,
+            request.deliveryLng
+        )
+
         transaction {
             OrdersTable.insert {
                 it[id] = newOrderId
@@ -48,8 +55,8 @@ class OrderService {
                 it[deliveryAddress] = request.deliveryAddress
                 it[deliveryLat] = request.deliveryLat
                 it[deliveryLng] = request.deliveryLng
-                it[estimatedDurationMinutes] = 25
-                it[estimatedDeliveryTime] = LocalDateTime.now().plusMinutes(25)
+                it[estimatedDurationMinutes] = estimatedMins
+                it[estimatedDeliveryTime] = LocalDateTime.now().plusMinutes(estimatedMins.toLong())
                 it[createdAt] = LocalDateTime.now()
                 it[updatedAt] = LocalDateTime.now()
             }
@@ -255,5 +262,39 @@ class OrderService {
 
         logger.info("Assigned driverId={} (userId={}) to orderId={}", driverId, driverUserId, orderId)
         return getOrderById(orderIdStr)
+    }
+
+    private fun calculateEstimatedDurationMinutes(
+        pickupLat: Double,
+        pickupLng: Double,
+        deliveryLat: Double,
+        deliveryLng: Double
+    ): Int {
+        if (pickupLat == 0.0 || pickupLng == 0.0 || deliveryLat == 0.0 || deliveryLng == 0.0) {
+            return 25
+        }
+
+        val r = 6371.0 // Earth radius in kilometers
+        val dLat = Math.toRadians(deliveryLat - pickupLat)
+        val dLng = Math.toRadians(deliveryLng - pickupLng)
+
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(pickupLat)) * Math.cos(Math.toRadians(deliveryLat)) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        val straightLineKm = r * c
+
+        // Road factor: roads are ~30% longer than straight-line distance
+        val roadKm = straightLineKm * 1.3
+
+        // Determine average speed & buffer based on distance tier
+        val (avgSpeedKmH, handlingBufferMins) = when {
+            roadKm <= 10.0 -> 25.0 to 10 // Local city: 25 km/h + 10 mins buffer
+            roadKm <= 100.0 -> 40.0 to 15 // Regional: 40 km/h + 15 mins buffer
+            else -> 60.0 to 30 // Inter-state highway: 60 km/h + 30 mins buffer
+        }
+
+        val travelTimeMins = (roadKm / avgSpeedKmH) * 60.0
+        return (travelTimeMins + handlingBufferMins).toInt().coerceAtLeast(10)
     }
 }

@@ -27,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.trackly.core.common.theme.*
+import com.trackly.core.common.util.TimeUtils
 import com.trackly.core.model.Order
 import com.trackly.core.model.OrderStatus
 
@@ -305,8 +306,8 @@ fun CustomerOrderScreenContent(
                                 Column {
                                     Text("Estimated Arrival", style = MaterialTheme.typography.bodyMedium, color = TextSecondaryGrey)
                                     Text(
-                                        text = "${selectedOrder.estimatedDurationMinutes ?: 25} mins",
-                                        fontSize = 24.sp,
+                                        text = TimeUtils.formatMinutesToDaysHoursMins((selectedOrder.estimatedDurationMinutes ?: 25).toLong()),
+                                        fontSize = 20.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = TealBluePrimary
                                     )

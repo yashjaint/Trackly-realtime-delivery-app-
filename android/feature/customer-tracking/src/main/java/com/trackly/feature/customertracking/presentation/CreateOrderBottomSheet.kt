@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.trackly.core.common.theme.*
+import com.trackly.core.common.util.TimeUtils
 import com.trackly.core.model.AddressSearchResult
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -387,6 +388,10 @@ fun CreateOrderBottomSheet(
             Spacer(modifier = Modifier.height(20.dp))
 
             // Summary Card Preview
+            val previewMins = remember(pickupSelectedLat, pickupSelectedLng, deliverySelectedLat, deliverySelectedLng) {
+                calculateEstimatedDurationMinutes(pickupSelectedLat, pickupSelectedLng, deliverySelectedLat, deliverySelectedLng)
+            }
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -402,7 +407,10 @@ fun CreateOrderBottomSheet(
                     Column {
                         Text("ESTIMATED ARRIVAL", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DeepOceanSecondary)
                         Text(
-                            text = if (pickupText.isNotBlank() && deliveryText.isNotBlank()) "~15 - 25 mins" else "Select addresses above",
+                            text = if (pickupText.isNotBlank() && deliveryText.isNotBlank())
+                                "~${TimeUtils.formatMinutesToDaysHoursMins(previewMins.toLong())}"
+                            else
+                                "Select addresses above",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = TextPrimaryCharcoal
@@ -449,4 +457,36 @@ fun CreateOrderBottomSheet(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+}
+
+private fun calculateEstimatedDurationMinutes(
+    pickupLat: Double,
+    pickupLng: Double,
+    deliveryLat: Double,
+    deliveryLng: Double
+): Int {
+    if (pickupLat == 0.0 || pickupLng == 0.0 || deliveryLat == 0.0 || deliveryLng == 0.0) {
+        return 25
+    }
+
+    val r = 6371.0 // Earth radius in kilometers
+    val dLat = Math.toRadians(deliveryLat - pickupLat)
+    val dLng = Math.toRadians(deliveryLng - pickupLng)
+
+    val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(Math.toRadians(pickupLat)) * Math.cos(Math.toRadians(deliveryLat)) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2)
+    val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    val straightLineKm = r * c
+
+    val roadKm = straightLineKm * 1.3
+
+    val (avgSpeedKmH, handlingBufferMins) = when {
+        roadKm <= 10.0 -> 25.0 to 10
+        roadKm <= 100.0 -> 40.0 to 15
+        else -> 60.0 to 30
+    }
+
+    val travelTimeMins = (roadKm / avgSpeedKmH) * 60.0
+    return (travelTimeMins + handlingBufferMins).toInt().coerceAtLeast(10)
 }
