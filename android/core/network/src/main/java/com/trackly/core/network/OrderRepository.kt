@@ -2,8 +2,16 @@ package com.trackly.core.network
 
 import android.util.Log
 import com.trackly.core.common.network.Resource
+import com.trackly.core.database.dao.OrderDao
+import com.trackly.core.database.dao.PendingActionDao
+import com.trackly.core.database.entity.PendingActionEntity
+import com.trackly.core.database.entity.toDomain
+import com.trackly.core.database.entity.toEntity
 import com.trackly.core.model.Order
 import com.trackly.core.model.OrderStatus
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,12 +20,15 @@ interface OrderRepository {
     suspend fun getActiveOrder(): Resource<Order>
     suspend fun updateOrderStatus(orderId: String, newStatus: OrderStatus, remark: String?): Resource<Order>
     suspend fun assignDriver(orderId: String): Resource<Order>
+    suspend fun syncPendingActions()
 }
 
 @Singleton
 class OrderRepositoryImpl @Inject constructor(
     private val orderApi: OrderApi,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val orderDao: OrderDao,
+    private val pendingActionDao: PendingActionDao
 ) : OrderRepository {
 
     companion object {
@@ -36,9 +47,9 @@ class OrderRepositoryImpl @Inject constructor(
         deliveryAddress: String,
         deliveryLat: Double,
         deliveryLng: Double
-    ): Resource<Order> {
+    ): Resource<Order> = withContext(Dispatchers.IO) {
         Log.d(TAG, "Creating new order: pickup=$pickupAddress, delivery=$deliveryAddress")
-        return try {
+        try {
             val response = orderApi.createOrder(
                 authHeader = getAuthHeader(),
                 request = ApiCreateOrderRequest(
@@ -53,34 +64,55 @@ class OrderRepositoryImpl @Inject constructor(
 
             if (response.isSuccessful && response.body() != null) {
                 val dto = response.body()!!
-                Log.d(TAG, "Order created successfully: orderId=${dto.id}, orderNumber=${dto.orderNumber}")
-                Resource.Success(mapDtoToOrder(dto))
+                val order = mapDtoToOrder(dto)
+                orderDao.insertOrder(order.toEntity(isSynced = true))
+                Log.d(TAG, "Order created & cached in Room DB: orderId=${dto.id}")
+                syncPendingActions()
+                Resource.Success(order)
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Failed to create order"
                 Log.w(TAG, "Create order error: $errorMsg")
                 Resource.Error(errorMsg)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Network exception creating order", e)
-            Resource.Error(e.localizedMessage ?: "Network connection error")
+            Log.e(TAG, "Network exception creating order. Reading from local cache.", e)
+            val cached = orderDao.getActiveOrder()
+            if (cached != null) {
+                Resource.Success(cached.toDomain())
+            } else {
+                Resource.Error(e.localizedMessage ?: "Offline - Network connection error")
+            }
         }
     }
 
-    override suspend fun getActiveOrder(): Resource<Order> {
-        Log.d(TAG, "Fetching active order from server...")
-        return try {
+    override suspend fun getActiveOrder(): Resource<Order> = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Fetching active order (Remote + Room Cache)...")
+        try {
             val response = orderApi.getActiveOrder(authHeader = getAuthHeader())
             if (response.isSuccessful && response.body() != null) {
                 val dto = response.body()!!
-                Log.d(TAG, "Active order fetched: orderId=${dto.id}, status=${dto.status}")
-                Resource.Success(mapDtoToOrder(dto))
+                val order = mapDtoToOrder(dto)
+                orderDao.insertOrder(order.toEntity(isSynced = true))
+                Log.d(TAG, "Active order updated in Room DB: orderId=${dto.id}")
+                syncPendingActions()
+                Resource.Success(order)
             } else {
-                Log.w(TAG, "No active order found or response code=${response.code()}")
-                Resource.Error("No active order found")
+                val cached = orderDao.getActiveOrder()
+                if (cached != null) {
+                    Log.d(TAG, "Server returned no active order, using cached order: ${cached.orderNumber}")
+                    Resource.Success(cached.toDomain())
+                } else {
+                    Resource.Error("No active order found")
+                }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Network exception fetching active order", e)
-            Resource.Error(e.localizedMessage ?: "Network connection error")
+            Log.w(TAG, "Offline mode - fetching active order from Room DB cache", e)
+            val cached = orderDao.getActiveOrder()
+            if (cached != null) {
+                Resource.Success(cached.toDomain())
+            } else {
+                Resource.Error("Offline mode: No cached order available")
+            }
         }
     }
 
@@ -88,9 +120,13 @@ class OrderRepositoryImpl @Inject constructor(
         orderId: String,
         newStatus: OrderStatus,
         remark: String?
-    ): Resource<Order> {
+    ): Resource<Order> = withContext(Dispatchers.IO) {
         Log.d(TAG, "Updating order status: orderId=$orderId, newStatus=${newStatus.name}")
-        return try {
+        
+        // Optimistic Room Cache update
+        orderDao.updateOrderStatus(orderId, newStatus.name, System.currentTimeMillis(), isSynced = false)
+
+        try {
             val response = orderApi.updateOrderStatus(
                 authHeader = getAuthHeader(),
                 orderId = orderId,
@@ -99,22 +135,31 @@ class OrderRepositoryImpl @Inject constructor(
 
             if (response.isSuccessful && response.body() != null) {
                 val dto = response.body()!!
-                Log.d(TAG, "Order status updated successfully to ${dto.status}")
-                Resource.Success(mapDtoToOrder(dto))
+                val order = mapDtoToOrder(dto)
+                orderDao.insertOrder(order.toEntity(isSynced = true))
+                Log.d(TAG, "Order status synced with server: ${dto.status}")
+                Resource.Success(order)
             } else {
-                val errorMsg = response.errorBody()?.string() ?: "Failed to update status"
-                Log.w(TAG, "Update order status error: $errorMsg")
-                Resource.Error(errorMsg)
+                val errorMsg = response.errorBody()?.string() ?: "Failed to update status on server"
+                queueOfflineAction(orderId, "UPDATE_STATUS", "{\"newStatus\":\"${newStatus.name}\",\"remark\":\"$remark\"}")
+                val cached = orderDao.getOrderById(orderId)
+                if (cached != null) Resource.Success(cached.toDomain()) else Resource.Error(errorMsg)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Network exception updating order status", e)
-            Resource.Error(e.localizedMessage ?: "Network connection error")
+            Log.w(TAG, "Offline network exception during status update. Queueing pending action.", e)
+            queueOfflineAction(orderId, "UPDATE_STATUS", "{\"newStatus\":\"${newStatus.name}\",\"remark\":\"$remark\"}")
+            val cached = orderDao.getOrderById(orderId)
+            if (cached != null) {
+                Resource.Success(cached.toDomain())
+            } else {
+                Resource.Error("Status updated locally (Offline)")
+            }
         }
     }
 
-    override suspend fun assignDriver(orderId: String): Resource<Order> {
+    override suspend fun assignDriver(orderId: String): Resource<Order> = withContext(Dispatchers.IO) {
         Log.d(TAG, "Assigning driver to orderId=$orderId")
-        return try {
+        try {
             val response = orderApi.assignDriver(
                 authHeader = getAuthHeader(),
                 orderId = orderId
@@ -122,16 +167,71 @@ class OrderRepositoryImpl @Inject constructor(
 
             if (response.isSuccessful && response.body() != null) {
                 val dto = response.body()!!
-                Log.d(TAG, "Driver assigned successfully to orderId=${dto.id}")
-                Resource.Success(mapDtoToOrder(dto))
+                val order = mapDtoToOrder(dto)
+                orderDao.insertOrder(order.toEntity(isSynced = true))
+                Resource.Success(order)
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Failed to assign driver"
-                Log.w(TAG, "Assign driver error: $errorMsg")
-                Resource.Error(errorMsg)
+                val cached = orderDao.getOrderById(orderId)
+                if (cached != null) Resource.Success(cached.toDomain()) else Resource.Error(errorMsg)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Network exception assigning driver", e)
-            Resource.Error(e.localizedMessage ?: "Network connection error")
+            Log.e(TAG, "Offline exception assigning driver", e)
+            val cached = orderDao.getOrderById(orderId)
+            if (cached != null) Resource.Success(cached.toDomain()) else Resource.Error("Offline: Assign driver failed")
+        }
+    }
+
+    override suspend fun syncPendingActions() {
+        withContext(Dispatchers.IO) {
+            try {
+                val pendingActions = pendingActionDao.getAllPendingActions()
+                if (pendingActions.isEmpty()) return@withContext
+
+                Log.d(TAG, "Reconciling ${pendingActions.size} pending offline actions...")
+                for (action in pendingActions) {
+                    try {
+                        if (action.actionType == "UPDATE_STATUS") {
+                            val json = org.json.JSONObject(action.payloadJson)
+                            val statusStr = json.optString("newStatus")
+                            val remark = if (json.has("remark") && !json.isNull("remark")) json.getString("remark") else null
+                            val status = OrderStatus.valueOf(statusStr)
+
+                            val response = orderApi.updateOrderStatus(
+                                authHeader = getAuthHeader(),
+                                orderId = action.orderId,
+                                request = ApiUpdateOrderStatusRequest(newStatus = status.name, remark = remark)
+                            )
+                            if (response.isSuccessful && response.body() != null) {
+                                val order = mapDtoToOrder(response.body()!!)
+                                orderDao.insertOrder(order.toEntity(isSynced = true))
+                                pendingActionDao.deletePendingAction(action.id)
+                                Log.d(TAG, "Successfully synced pending action ${action.id}")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to sync action ${action.id}, will retry on next connection", e)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during pending actions sync", e)
+            }
+        }
+    }
+
+    private suspend fun queueOfflineAction(orderId: String, actionType: String, payloadJson: String) {
+        try {
+            val action = PendingActionEntity(
+                id = UUID.randomUUID().toString(),
+                orderId = orderId,
+                actionType = actionType,
+                payloadJson = payloadJson,
+                createdAt = System.currentTimeMillis()
+            )
+            pendingActionDao.insertPendingAction(action)
+            Log.d(TAG, "Queued offline pending action: $actionType for orderId=$orderId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error queueing offline action", e)
         }
     }
 
