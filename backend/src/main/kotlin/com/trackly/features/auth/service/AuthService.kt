@@ -7,10 +7,18 @@ import com.trackly.features.auth.domain.UsersTable
 import com.trackly.features.auth.dto.AuthResponse
 import com.trackly.features.auth.dto.LoginRequest
 import com.trackly.features.auth.dto.RegisterRequest
+import com.trackly.features.auth.dto.UpdateProfileRequest
 import com.trackly.features.auth.dto.UserDto
+import com.trackly.features.order.domain.OrderStatusHistoryTable
+import com.trackly.features.order.domain.OrdersTable
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import org.slf4j.LoggerFactory
 import java.util.UUID
 
@@ -121,5 +129,92 @@ class AuthService {
             role = userRow[UsersTable.role],
             fcmToken = userRow[UsersTable.fcmToken]
         )
+    }
+
+    fun updateUserProfile(userIdStr: String, request: UpdateProfileRequest): UserDto {
+        val userId = UUID.fromString(userIdStr)
+        logger.info("Updating profile for userId={}", userId)
+
+        transaction {
+            UsersTable.update({ UsersTable.id eq userId }) {
+                it[name] = request.name.trim()
+            }
+            if (!request.vehicleNumber.isNullOrBlank()) {
+                DriversTable.update({ DriversTable.userId eq userId }) {
+                    it[vehicleNumber] = request.vehicleNumber.trim()
+                }
+            }
+        }
+
+        return getUserProfile(userIdStr)
+    }
+
+    fun deleteUserAccount(userIdStr: String) {
+        val userId = UUID.fromString(userIdStr)
+        logger.info("Requested account deletion for userId={}", userId)
+
+        val userRow = transaction {
+            UsersTable.selectAll().where { UsersTable.id eq userId }.singleOrNull()
+        } ?: throw IllegalArgumentException("User not found")
+
+        val role = userRow[UsersTable.role]
+
+        // Validate active orders requirement: cannot delete account if an active delivery exists
+        transaction {
+            val activeStatuses = listOf("CREATED", "CONFIRMED", "PREPARING", "READY_FOR_PICKUP", "PICKED_UP", "OUT_FOR_DELIVERY")
+            if (role.equals("CUSTOMER", ignoreCase = true)) {
+                val hasActiveOrders = OrdersTable.selectAll()
+                    .where { (OrdersTable.customerId eq userId) and (OrdersTable.status inList activeStatuses) }
+                    .count() > 0
+                if (hasActiveOrders) {
+                    throw IllegalStateException("Cannot delete account: You have active order(s) in progress. Please wait until your orders are delivered or cancelled.")
+                }
+            } else if (role.equals("DRIVER", ignoreCase = true)) {
+                val driverRow = DriversTable.selectAll().where { DriversTable.userId eq userId }.singleOrNull()
+                if (driverRow != null) {
+                    val driverId = driverRow[DriversTable.id]
+                    val hasActiveDelivery = OrdersTable.selectAll()
+                        .where { (OrdersTable.driverId eq driverId) and (OrdersTable.status inList activeStatuses) }
+                        .count() > 0
+                    if (hasActiveDelivery) {
+                        throw IllegalStateException("Cannot delete account: You have an active delivery job in progress. Please complete or cancel all active deliveries first.")
+                    }
+                }
+            }
+        }
+
+        // Proceed to delete user profile and driver record cleanly
+        transaction {
+            // Delete order status history records updated by this user
+            OrderStatusHistoryTable.deleteWhere { OrderStatusHistoryTable.updatedBy eq userId }
+
+            // Delete status history and orders created by this user (customer)
+            val customerOrderIds = OrdersTable.selectAll()
+                .where { OrdersTable.customerId eq userId }
+                .map { it[OrdersTable.id] }
+
+            if (customerOrderIds.isNotEmpty()) {
+                OrderStatusHistoryTable.deleteWhere { OrderStatusHistoryTable.orderId inList customerOrderIds }
+                OrdersTable.deleteWhere { OrdersTable.customerId eq userId }
+            }
+
+            // Unassign/delete driver orders and driver record
+            val driverRow = DriversTable.selectAll().where { DriversTable.userId eq userId }.singleOrNull()
+            if (driverRow != null) {
+                val driverId = driverRow[DriversTable.id]
+                val driverOrderIds = OrdersTable.selectAll()
+                    .where { OrdersTable.driverId eq driverId }
+                    .map { it[OrdersTable.id] }
+                if (driverOrderIds.isNotEmpty()) {
+                    OrderStatusHistoryTable.deleteWhere { OrderStatusHistoryTable.orderId inList driverOrderIds }
+                    OrdersTable.deleteWhere { OrdersTable.driverId eq driverId }
+                }
+                DriversTable.deleteWhere { DriversTable.id eq driverId }
+            }
+
+            UsersTable.deleteWhere { UsersTable.id eq userId }
+        }
+
+        logger.info("User account successfully deleted: userId={}", userId)
     }
 }

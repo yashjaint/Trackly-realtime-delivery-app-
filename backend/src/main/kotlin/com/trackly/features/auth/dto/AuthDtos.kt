@@ -38,6 +38,12 @@ data class FcmTokenRequest(
 )
 
 @Serializable
+data class UpdateProfileRequest(
+    val name: String,
+    val vehicleNumber: String? = null
+)
+
+@Serializable
 data class ErrorResponse(
     val message: String,
     val status: Int = 400

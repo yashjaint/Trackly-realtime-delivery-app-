@@ -1,19 +1,13 @@
-package com.trackly.core.network
+package com.trackly.core.network.data.repository
 
 import android.util.Log
 import com.trackly.core.model.AddressSearchResult
+import com.trackly.core.network.GeocodingApi
+import com.trackly.core.network.domain.repository.AddressSearchRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
-
-interface AddressSearchRepository {
-    suspend fun searchAddress(
-        query: String,
-        userLat: Double? = null,
-        userLng: Double? = null
-    ): List<AddressSearchResult>
-}
 
 @Singleton
 class AddressSearchRepositoryImpl @Inject constructor(

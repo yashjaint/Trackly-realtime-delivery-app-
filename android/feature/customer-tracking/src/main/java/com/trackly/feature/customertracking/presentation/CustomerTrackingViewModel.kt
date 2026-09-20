@@ -6,8 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.trackly.core.common.network.Resource
 import com.trackly.core.model.AddressSearchResult
 import com.trackly.core.model.Order
-import com.trackly.core.network.AddressSearchRepository
-import com.trackly.core.network.OrderRepository
+import com.trackly.core.model.User
+import com.trackly.core.network.SessionManager
+import com.trackly.core.network.domain.repository.AddressSearchRepository
+import com.trackly.core.network.domain.repository.AuthRepository
+import com.trackly.core.network.domain.repository.OrderRepository
 import com.trackly.core.websocket.TrackingWebSocketClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -42,7 +45,9 @@ data class CustomerHistoryUiState(
 class CustomerTrackingViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
     private val webSocketClient: TrackingWebSocketClient,
-    private val addressSearchRepository: AddressSearchRepository
+    private val addressSearchRepository: AddressSearchRepository,
+    private val authRepository: AuthRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     companion object {
@@ -222,6 +227,28 @@ class CustomerTrackingViewModel @Inject constructor(
                 if (current != null && current.selectedOrder.id == frame.orderId) {
                     _uiState.value = current.copy(driverLat = frame.lat, driverLng = frame.lng)
                 }
+            }
+        }
+    }
+
+    fun getUserSession(): User? = sessionManager.getUser()
+
+    fun updateProfile(name: String, vehicleNumber: String?, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            when (val res = authRepository.updateProfile(name, vehicleNumber)) {
+                is Resource.Success -> onResult(true, "Profile updated successfully")
+                is Resource.Error -> onResult(false, res.message)
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    fun deleteAccount(onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            when (val res = authRepository.deleteAccount()) {
+                is Resource.Success -> onResult(true, "Account deleted successfully")
+                is Resource.Error -> onResult(false, res.message)
+                is Resource.Loading -> {}
             }
         }
     }

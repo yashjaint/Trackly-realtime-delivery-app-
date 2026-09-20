@@ -109,8 +109,8 @@ object NetworkModule {
     @Singleton
     fun provideAddressSearchRepository(
         geocodingApi: com.trackly.core.network.GeocodingApi
-    ): com.trackly.core.network.AddressSearchRepository {
-        return com.trackly.core.network.AddressSearchRepositoryImpl(geocodingApi)
+    ): com.trackly.core.network.domain.repository.AddressSearchRepository {
+        return com.trackly.core.network.data.repository.AddressSearchRepositoryImpl(geocodingApi)
     }
 }
 

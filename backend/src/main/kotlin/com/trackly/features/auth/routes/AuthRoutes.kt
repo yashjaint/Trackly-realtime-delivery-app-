@@ -69,6 +69,39 @@ fun Route.authRoutes(authService: AuthService) {
                     call.respond(HttpStatusCode.NotFound, ErrorResponse(message = "User not found", status = 404))
                 }
             }
+
+            put("/me") {
+                val principal = call.principal<JWTPrincipal>()
+                val userId = principal?.payload?.getClaim("userId")?.asString()
+                if (userId == null) {
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token principal", status = 401))
+                    return@put
+                }
+                try {
+                    val request = call.receive<com.trackly.features.auth.dto.UpdateProfileRequest>()
+                    val updated = authService.updateUserProfile(userId, request)
+                    call.respond(HttpStatusCode.OK, updated)
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Failed to update profile", status = 400))
+                }
+            }
+
+            delete("/me") {
+                val principal = call.principal<JWTPrincipal>()
+                val userId = principal?.payload?.getClaim("userId")?.asString()
+                if (userId == null) {
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token principal", status = 401))
+                    return@delete
+                }
+                try {
+                    authService.deleteUserAccount(userId)
+                    call.respond(HttpStatusCode.OK, mapOf("status" to "success", "message" to "Account deleted successfully"))
+                } catch (e: IllegalStateException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Cannot delete account due to active orders", status = 400))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = e.message ?: "Failed to delete account", status = 500))
+                }
+            }
         }
     }
 }

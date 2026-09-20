@@ -1,4 +1,4 @@
-package com.trackly.core.network
+package com.trackly.core.network.data.repository
 
 import android.util.Log
 import com.trackly.core.common.network.Resource
@@ -9,21 +9,17 @@ import com.trackly.core.database.entity.toDomain
 import com.trackly.core.database.entity.toEntity
 import com.trackly.core.model.Order
 import com.trackly.core.model.OrderStatus
+import com.trackly.core.network.ApiCreateOrderRequest
+import com.trackly.core.network.ApiOrderDto
+import com.trackly.core.network.ApiUpdateOrderStatusRequest
+import com.trackly.core.network.OrderApi
+import com.trackly.core.network.SessionManager
+import com.trackly.core.network.domain.repository.OrderRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-
-interface OrderRepository {
-    suspend fun createOrder(title: String? = null, description: String? = null, pickupAddress: String, pickupLat: Double, pickupLng: Double, deliveryAddress: String, deliveryLat: Double, deliveryLng: Double): Resource<Order>
-    suspend fun getActiveOrder(): Resource<Order>
-    suspend fun getActiveOrders(): Resource<List<Order>>
-    suspend fun getOrderHistory(): Resource<List<Order>>
-    suspend fun updateOrderStatus(orderId: String, newStatus: OrderStatus, remark: String?): Resource<Order>
-    suspend fun assignDriver(orderId: String): Resource<Order>
-    suspend fun syncPendingActions()
-}
 
 @Singleton
 class OrderRepositoryImpl @Inject constructor(

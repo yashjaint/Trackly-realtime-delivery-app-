@@ -3,7 +3,7 @@ package com.trackly.feature.auth.domain
 import com.trackly.core.common.network.Resource
 import com.trackly.core.model.User
 import com.trackly.core.model.UserRole
-import com.trackly.core.network.AuthRepository
+import com.trackly.core.network.domain.repository.AuthRepository
 import javax.inject.Inject
 
 class RegisterUseCase @Inject constructor(

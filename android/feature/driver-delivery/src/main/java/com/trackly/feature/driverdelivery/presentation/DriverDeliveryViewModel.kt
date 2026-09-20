@@ -6,7 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.trackly.core.common.network.Resource
 import com.trackly.core.model.Order
 import com.trackly.core.model.OrderStatus
-import com.trackly.core.network.OrderRepository
+import com.trackly.core.model.User
+import com.trackly.core.network.SessionManager
+import com.trackly.core.network.domain.repository.AuthRepository
+import com.trackly.core.network.domain.repository.OrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,7 +40,9 @@ data class DriverHistoryUiState(
 @HiltViewModel
 class DriverDeliveryViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
-    private val webSocketClient: com.trackly.core.websocket.TrackingWebSocketClient
+    private val webSocketClient: com.trackly.core.websocket.TrackingWebSocketClient,
+    private val authRepository: AuthRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     companion object {
@@ -153,6 +158,28 @@ class DriverDeliveryViewModel @Inject constructor(
                     Log.e(TAG, "Accept order failed: ${result.message}")
                     _uiState.value = DriverDeliveryUiState.Error(result.message)
                 }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    fun getUserSession(): User? = sessionManager.getUser()
+
+    fun updateProfile(name: String, vehicleNumber: String?, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            when (val res = authRepository.updateProfile(name, vehicleNumber)) {
+                is Resource.Success -> onResult(true, "Profile updated successfully")
+                is Resource.Error -> onResult(false, res.message)
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    fun deleteAccount(onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            when (val res = authRepository.deleteAccount()) {
+                is Resource.Success -> onResult(true, "Account deleted successfully")
+                is Resource.Error -> onResult(false, res.message)
                 is Resource.Loading -> {}
             }
         }

@@ -6,9 +6,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.*
@@ -23,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.trackly.core.common.theme.*
 import com.trackly.core.model.Order
 import com.trackly.core.model.OrderStatus
+import com.trackly.core.model.User
 
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 
@@ -126,7 +129,10 @@ fun DriverDeliveryScreen(
         }
     }
 
+    val userSession = remember { viewModel.getUserSession() }
+
     DriverDeliveryScreenContent(
+        user = userSession,
         uiState = uiState,
         historyState = historyState,
         hasLocationPermission = hasLocationPermission,
@@ -135,6 +141,21 @@ fun DriverDeliveryScreen(
         onUpdateStatus = { orderId, status -> viewModel.updateStatus(orderId, status, "Driver updated state to ${status.name}") },
         onRefreshClick = { viewModel.fetchActiveDelivery() },
         onRefreshHistory = { viewModel.fetchOrderHistory() },
+        onSaveProfile = { name, vNum -> viewModel.updateProfile(name, vNum) { _, _ -> } },
+        onDeleteAccount = {
+            viewModel.deleteAccount { success, msg ->
+                if (success) {
+                    val stopIntent = android.content.Intent(context, com.trackly.core.location.LocationService::class.java).apply {
+                        action = com.trackly.core.location.LocationService.ACTION_STOP
+                    }
+                    context.startService(stopIntent)
+                    android.widget.Toast.makeText(context, "Account deleted successfully", android.widget.Toast.LENGTH_SHORT).show()
+                    onLogout()
+                } else {
+                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        },
         onLogout = {
             val stopIntent = android.content.Intent(context, com.trackly.core.location.LocationService::class.java).apply {
                 action = com.trackly.core.location.LocationService.ACTION_STOP
@@ -148,6 +169,7 @@ fun DriverDeliveryScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DriverDeliveryScreenContent(
+    user: User? = null,
     uiState: DriverDeliveryUiState,
     historyState: DriverHistoryUiState = DriverHistoryUiState(),
     hasLocationPermission: Boolean = true,
@@ -156,10 +178,25 @@ fun DriverDeliveryScreenContent(
     onUpdateStatus: (orderId: String, newStatus: OrderStatus) -> Unit,
     onRefreshClick: () -> Unit,
     onRefreshHistory: () -> Unit = {},
+    onSaveProfile: (name: String, vehicleNumber: String?) -> Unit = { _, _ -> },
+    onDeleteAccount: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showAccountDialog by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
+
+    if (showAccountDialog) {
+        val hasActiveDelivery = uiState is DriverDeliveryUiState.ActiveDelivery
+        com.trackly.core.common.ui.AccountDetailsDialog(
+            user = user,
+            hasActiveDelivery = hasActiveDelivery,
+            onSaveProfile = onSaveProfile,
+            onDeleteAccount = onDeleteAccount,
+            onDismiss = { showAccountDialog = false }
+        )
+    }
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -192,12 +229,36 @@ fun DriverDeliveryScreenContent(
                 TopAppBar(
                     title = { Text(if (selectedTabIndex == 0) "Active Job" else "Delivery History", fontWeight = FontWeight.Bold) },
                     actions = {
-                        IconButton(onClick = { showLogoutDialog = true }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                contentDescription = "Logout",
-                                tint = SurfaceWhite
-                            )
+                        Box {
+                            IconButton(onClick = { showOverflowMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More Options",
+                                    tint = SurfaceWhite
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showOverflowMenu,
+                                onDismissRequest = { showOverflowMenu = false },
+                                modifier = Modifier.background(SurfaceWhite)
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Account Details", color = TextPrimaryCharcoal, fontWeight = FontWeight.Bold) },
+                                    leadingIcon = { Icon(Icons.Default.AccountCircle, contentDescription = null, tint = DeepOceanSecondary) },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        showAccountDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Log Out", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        showLogoutDialog = true
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(

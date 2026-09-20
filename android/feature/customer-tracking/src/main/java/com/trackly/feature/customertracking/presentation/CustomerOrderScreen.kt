@@ -7,13 +7,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.AutoAwesome
-
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.*
@@ -30,6 +31,7 @@ import com.trackly.core.common.theme.*
 import com.trackly.core.common.util.TimeUtils
 import com.trackly.core.model.Order
 import com.trackly.core.model.OrderStatus
+import com.trackly.core.model.User
 
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 
@@ -44,6 +46,8 @@ fun CustomerOrderScreen(
     val pickupSuggestions by viewModel.pickupSuggestions.collectAsState()
     val deliverySuggestions by viewModel.deliverySuggestions.collectAsState()
     val isSubmittingOrder by viewModel.isSubmittingOrder.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val userSession = remember { viewModel.getUserSession() }
 
     LaunchedEffect(Unit) {
         viewModel.fetchActiveOrder()
@@ -51,6 +55,7 @@ fun CustomerOrderScreen(
     }
 
     CustomerOrderScreenContent(
+        user = userSession,
         uiState = uiState,
         historyState = historyState,
         pickupSuggestions = pickupSuggestions,
@@ -65,6 +70,17 @@ fun CustomerOrderScreen(
         onSelectActiveOrderById = { orderId -> viewModel.selectActiveOrderById(orderId) },
         onRefreshClick = { viewModel.fetchActiveOrder() },
         onRefreshHistory = { viewModel.fetchOrderHistory() },
+        onSaveProfile = { name, vNum -> viewModel.updateProfile(name, vNum) { _, _ -> } },
+        onDeleteAccount = {
+            viewModel.deleteAccount { success, msg ->
+                if (success) {
+                    android.widget.Toast.makeText(context, "Account deleted successfully", android.widget.Toast.LENGTH_SHORT).show()
+                    onLogout()
+                } else {
+                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        },
         onOpenAiChat = onOpenAiChat,
         onLogout = onLogout
     )
@@ -73,6 +89,7 @@ fun CustomerOrderScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerOrderScreenContent(
+    user: User? = null,
     uiState: CustomerOrderUiState,
     historyState: CustomerHistoryUiState,
     pickupSuggestions: List<com.trackly.core.model.AddressSearchResult> = emptyList(),
@@ -85,11 +102,15 @@ fun CustomerOrderScreenContent(
     onSelectActiveOrderById: (String) -> Unit = {},
     onRefreshClick: () -> Unit,
     onRefreshHistory: () -> Unit,
+    onSaveProfile: (name: String, vehicleNumber: String?) -> Unit = { _, _ -> },
+    onDeleteAccount: () -> Unit = {},
     onOpenAiChat: (orderId: String) -> Unit,
     onLogout: () -> Unit = {}
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showAccountDialog by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
     var showAiBottomSheet by remember { mutableStateOf(false) }
     var showCreateOrderSheet by remember { mutableStateOf(false) }
 
@@ -108,6 +129,16 @@ fun CustomerOrderScreenContent(
         )
     }
 
+    if (showAccountDialog) {
+        val hasActiveOrders = (uiState as? CustomerOrderUiState.ActiveOrders)?.orders?.isNotEmpty() == true
+        com.trackly.core.common.ui.AccountDetailsDialog(
+            user = user,
+            hasActiveDelivery = hasActiveOrders,
+            onSaveProfile = onSaveProfile,
+            onDeleteAccount = onDeleteAccount,
+            onDismiss = { showAccountDialog = false }
+        )
+    }
 
     if (showAiBottomSheet) {
         val selectedOrder = (uiState as? CustomerOrderUiState.ActiveOrders)?.selectedOrder
@@ -159,12 +190,36 @@ fun CustomerOrderScreenContent(
                                 tint = SurfaceWhite
                             )
                         }
-                        IconButton(onClick = { showLogoutDialog = true }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                contentDescription = "Logout",
-                                tint = SurfaceWhite
-                            )
+                        Box {
+                            IconButton(onClick = { showOverflowMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More Options",
+                                    tint = SurfaceWhite
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showOverflowMenu,
+                                onDismissRequest = { showOverflowMenu = false },
+                                modifier = Modifier.background(SurfaceWhite)
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Account Details", color = TextPrimaryCharcoal, fontWeight = FontWeight.Bold) },
+                                    leadingIcon = { Icon(Icons.Default.AccountCircle, contentDescription = null, tint = DeepOceanSecondary) },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        showAccountDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Log Out", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        showLogoutDialog = true
+                                    }
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(

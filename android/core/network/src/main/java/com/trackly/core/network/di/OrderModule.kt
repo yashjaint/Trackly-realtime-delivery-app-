@@ -1,7 +1,7 @@
 package com.trackly.core.network.di
 
-import com.trackly.core.network.OrderRepository
-import com.trackly.core.network.OrderRepositoryImpl
+import com.trackly.core.network.data.repository.OrderRepositoryImpl
+import com.trackly.core.network.domain.repository.OrderRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

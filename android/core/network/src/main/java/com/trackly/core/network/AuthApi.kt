@@ -32,6 +32,11 @@ data class ApiAuthResponse(
     val user: ApiUserDto
 )
 
+data class ApiUpdateProfileRequest(
+    val name: String,
+    val vehicleNumber: String? = null
+)
+
 interface AuthApi {
     @POST("api/v1/auth/register")
     suspend fun register(@Body request: ApiRegisterRequest): Response<ApiAuthResponse>
@@ -41,4 +46,13 @@ interface AuthApi {
 
     @GET("api/v1/auth/me")
     suspend fun getProfile(@Header("Authorization") authHeader: String): Response<ApiUserDto>
+
+    @retrofit2.http.PUT("api/v1/auth/me")
+    suspend fun updateProfile(
+        @Header("Authorization") authHeader: String,
+        @Body request: ApiUpdateProfileRequest
+    ): Response<ApiUserDto>
+
+    @retrofit2.http.DELETE("api/v1/auth/me")
+    suspend fun deleteAccount(@Header("Authorization") authHeader: String): Response<Unit>
 }

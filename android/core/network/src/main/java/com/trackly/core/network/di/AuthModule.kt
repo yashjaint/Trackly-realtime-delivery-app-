@@ -1,7 +1,7 @@
 package com.trackly.core.network.di
 
-import com.trackly.core.network.AuthRepository
-import com.trackly.core.network.AuthRepositoryImpl
+import com.trackly.core.network.data.repository.AuthRepositoryImpl
+import com.trackly.core.network.domain.repository.AuthRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
