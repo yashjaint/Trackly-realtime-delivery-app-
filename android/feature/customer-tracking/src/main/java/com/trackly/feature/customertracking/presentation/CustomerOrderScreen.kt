@@ -59,6 +59,19 @@ fun CustomerOrderScreenContent(
     onLogout: () -> Unit = {}
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showAiBottomSheet by remember { mutableStateOf(false) }
+
+    if (showAiBottomSheet) {
+        val activeOrder = (uiState as? CustomerOrderUiState.ActiveOrder)?.order
+        val driverLat = (uiState as? CustomerOrderUiState.ActiveOrder)?.driverLat
+        val driverLng = (uiState as? CustomerOrderUiState.ActiveOrder)?.driverLng
+        com.trackly.feature.aiassistant.presentation.AiAssistantBottomSheet(
+            order = activeOrder,
+            driverLat = driverLat,
+            driverLng = driverLng,
+            onDismiss = { showAiBottomSheet = false }
+        )
+    }
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -249,7 +262,10 @@ fun CustomerOrderScreenContent(
                                 }
 
                                 Button(
-                                    onClick = { onOpenAiChat(order.id) },
+                                    onClick = {
+                                        showAiBottomSheet = true
+                                        onOpenAiChat(order.id)
+                                    },
                                     shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = DeepOceanSecondary)
                                 ) {

@@ -31,6 +31,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:websocket"))
     implementation(project(":core:database"))
+    implementation(project(":feature:ai-assistant"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
