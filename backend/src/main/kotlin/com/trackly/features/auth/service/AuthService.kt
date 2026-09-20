@@ -72,13 +72,20 @@ class AuthService {
             UsersTable.selectAll().where { UsersTable.email eq request.email.lowercase().trim() }.singleOrNull()
         } ?: run {
             logger.warn("Login failed: User not found for email={}", request.email)
-            throw IllegalArgumentException("Invalid email or password")
+            throw IllegalArgumentException("No account found with this email. Please check your email or Sign Up.")
         }
 
         val storedHash = userRow[UsersTable.passwordHash]
-        if (!PasswordHasher.verify(request.password, storedHash)) {
+        val isPasswordValid = try {
+            PasswordHasher.verify(request.password, storedHash)
+        } catch (e: Throwable) {
+            logger.warn("Error verifying password hash for email={}", request.email, e)
+            false
+        }
+
+        if (!isPasswordValid) {
             logger.warn("Login failed: Password mismatch for email={}", request.email)
-            throw IllegalArgumentException("Invalid email or password")
+            throw IllegalArgumentException("Incorrect password. Please verify your password and try again.")
         }
 
         val userId = userRow[UsersTable.id]

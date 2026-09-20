@@ -1,5 +1,6 @@
 package com.trackly.features.auth.routes
 
+import com.trackly.features.auth.dto.ErrorResponse
 import com.trackly.features.auth.dto.LoginRequest
 import com.trackly.features.auth.dto.RegisterRequest
 import com.trackly.features.auth.service.AuthService
@@ -14,8 +15,8 @@ import io.ktor.server.routing.*
 fun Route.authRoutes(authService: AuthService) {
     route("/api/v1/auth") {
         post("/register") {
-            val request = call.receive<RegisterRequest>()
             try {
+                val request = call.receive<RegisterRequest>()
                 val response = authService.register(request)
                 call.respond(HttpStatusCode.Created, response)
             } catch (e: IllegalArgumentException) {
@@ -24,20 +25,31 @@ fun Route.authRoutes(authService: AuthService) {
                 val msg = if (isAlreadyExists) "User is already registered with this email" else (e.message ?: "Invalid request")
                 call.respond(
                     statusCode,
-                    mapOf("status" to statusCode.value, "message" to msg)
+                    ErrorResponse(message = msg, status = statusCode.value)
+                )
+            } catch (e: Throwable) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorResponse(message = e.message ?: "Registration failed", status = 400)
                 )
             }
         }
 
         post("/login") {
-            val request = call.receive<LoginRequest>()
             try {
+                val request = call.receive<LoginRequest>()
                 val response = authService.login(request)
                 call.respond(HttpStatusCode.OK, response)
             } catch (e: IllegalArgumentException) {
                 call.respond(
                     HttpStatusCode.Unauthorized,
-                    mapOf("status" to 401, "message" to (e.message ?: "Invalid credentials"))
+                    ErrorResponse(message = e.message ?: "Invalid email or password", status = 401)
+                )
+            } catch (e: Throwable) {
+                call.application.environment.log.error("Unhandled exception during login", e)
+                call.respond(
+                    HttpStatusCode.Unauthorized,
+                    ErrorResponse(message = e.message ?: "Login failed. Please check your credentials.", status = 401)
                 )
             }
         }
@@ -47,14 +59,14 @@ fun Route.authRoutes(authService: AuthService) {
                 val principal = call.principal<JWTPrincipal>()
                 val userId = principal?.payload?.getClaim("userId")?.asString()
                 if (userId == null) {
-                    call.respond(HttpStatusCode.Unauthorized, mapOf("message" to "Invalid token principal"))
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token principal", status = 401))
                     return@get
                 }
                 try {
                     val userProfile = authService.getUserProfile(userId)
                     call.respond(HttpStatusCode.OK, userProfile)
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.NotFound, mapOf("message" to "User not found"))
+                    call.respond(HttpStatusCode.NotFound, ErrorResponse(message = "User not found", status = 404))
                 }
             }
         }

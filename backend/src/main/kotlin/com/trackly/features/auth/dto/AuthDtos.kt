@@ -36,3 +36,9 @@ data class AuthResponse(
 data class FcmTokenRequest(
     val fcmToken: String
 )
+
+@Serializable
+data class ErrorResponse(
+    val message: String,
+    val status: Int = 400
+)
