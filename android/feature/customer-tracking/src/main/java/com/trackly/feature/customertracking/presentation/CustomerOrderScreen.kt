@@ -12,7 +12,9 @@ import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.AutoAwesome
 
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -55,8 +57,8 @@ fun CustomerOrderScreen(
         isSubmittingOrder = isSubmittingOrder,
         onSearchPickup = { viewModel.searchPickupAddress(it) },
         onSearchDelivery = { viewModel.searchDeliveryAddress(it) },
-        onConfirmOrder = { pAddr, pLat, pLng, dAddr, dLat, dLng ->
-            viewModel.createCustomOrder(pAddr, pLat, pLng, dAddr, dLat, dLng)
+        onConfirmOrder = { title, description, pAddr, pLat, pLng, dAddr, dLat, dLng ->
+            viewModel.createCustomOrder(title, description, pAddr, pLat, pLng, dAddr, dLat, dLng)
         },
         onSelectActiveOrder = { index -> viewModel.selectActiveOrder(index) },
         onSelectActiveOrderById = { orderId -> viewModel.selectActiveOrderById(orderId) },
@@ -77,7 +79,7 @@ fun CustomerOrderScreenContent(
     isSubmittingOrder: Boolean = false,
     onSearchPickup: (String) -> Unit = {},
     onSearchDelivery: (String) -> Unit = {},
-    onConfirmOrder: (pAddr: String, pLat: Double, pLng: Double, dAddr: String, dLat: Double, dLng: Double) -> Unit = { _, _, _, _, _, _ -> },
+    onConfirmOrder: (title: String, description: String, pAddr: String, pLat: Double, pLng: Double, dAddr: String, dLat: Double, dLng: Double) -> Unit = { _, _, _, _, _, _, _, _ -> },
     onSelectActiveOrder: (Int) -> Unit = {},
     onSelectActiveOrderById: (String) -> Unit = {},
     onRefreshClick: () -> Unit,
@@ -97,9 +99,9 @@ fun CustomerOrderScreenContent(
             deliverySuggestions = deliverySuggestions,
             onSearchPickup = onSearchPickup,
             onSearchDelivery = onSearchDelivery,
-            onConfirmOrder = { pAddr, pLat, pLng, dAddr, dLat, dLng ->
+            onConfirmOrder = { title, description, pAddr, pLat, pLng, dAddr, dLat, dLng ->
                 showCreateOrderSheet = false
-                onConfirmOrder(pAddr, pLat, pLng, dAddr, dLat, dLng)
+                onConfirmOrder(title, description, pAddr, pLat, pLng, dAddr, dLat, dLng)
             },
             onDismiss = { showCreateOrderSheet = false }
         )
@@ -502,31 +504,93 @@ fun OrderHeaderCard(
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 3.dp else 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Header Row: Order Title & Status Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = order.orderNumber,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimaryCharcoal
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = order.displayTitle,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimaryCharcoal,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "ID: ${order.orderNumber}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondaryGrey
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
                 Badge(
                     containerColor = OceanTealHighlight,
                     contentColor = SurfaceWhite
                 ) {
                     Text(
-                        text = order.status.name,
+                        text = order.status.name.replace("_", " "),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // Description if present
+            val desc = order.description
+            if (!desc.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = TextSecondaryGrey,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = desc,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondaryGrey,
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
+            }
 
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Registered Driver Name Badge/Bar (Customer Requirement)
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = BackgroundLight,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = DeepOceanSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (!order.driverName.isNullOrBlank()) "Driver: ${order.driverName}" else "Driver: Assigning partner...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (!order.driverName.isNullOrBlank()) DeepOceanSecondary else TextSecondaryGrey
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Pickup Address
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Default.Store,
@@ -545,6 +609,7 @@ fun OrderHeaderCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Delivery Destination Address
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Default.LocationOn,

@@ -13,9 +13,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,12 +33,14 @@ import com.trackly.core.model.AddressSearchResult
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateOrderBottomSheet(
-    isSubmitting: Boolean,
-    pickupSuggestions: List<AddressSearchResult>,
-    deliverySuggestions: List<AddressSearchResult>,
+    isSubmitting: Boolean = false,
+    pickupSuggestions: List<AddressSearchResult> = emptyList(),
+    deliverySuggestions: List<AddressSearchResult> = emptyList(),
     onSearchPickup: (String) -> Unit,
     onSearchDelivery: (String) -> Unit,
     onConfirmOrder: (
+        title: String,
+        description: String,
         pickupAddress: String,
         pickupLat: Double,
         pickupLng: Double,
@@ -46,13 +50,16 @@ fun CreateOrderBottomSheet(
     ) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var orderTitleText by remember { mutableStateOf("") }
+    var orderDescText by remember { mutableStateOf("") }
+
     var pickupText by remember { mutableStateOf("") }
-    var pickupSelectedLat by remember { mutableStateOf(37.7749) }
-    var pickupSelectedLng by remember { mutableStateOf(-122.4194) }
+    var pickupSelectedLat by remember { mutableStateOf(17.3850) }
+    var pickupSelectedLng by remember { mutableStateOf(78.4867) }
 
     var deliveryText by remember { mutableStateOf("") }
-    var deliverySelectedLat by remember { mutableStateOf(37.7833) }
-    var deliverySelectedLng by remember { mutableStateOf(-122.4167) }
+    var deliverySelectedLat by remember { mutableStateOf(17.4401) }
+    var deliverySelectedLng by remember { mutableStateOf(78.3489) }
 
     var showPickupDropdown by remember { mutableStateOf(false) }
     var showDeliveryDropdown by remember { mutableStateOf(false) }
@@ -87,9 +94,57 @@ fun CreateOrderBottomSheet(
             }
 
             Text(
-                text = "Enter pickup and delivery locations with live address search.",
+                text = "Give your order a name and enter pickup & delivery locations.",
                 style = MaterialTheme.typography.bodySmall,
                 color = TextSecondaryGrey
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 0. Order Title Input
+            Text(
+                text = "ORDER NAME / TITLE *",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = DeepOceanSecondary
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            OutlinedTextField(
+                value = orderTitleText,
+                onValueChange = { orderTitleText = it },
+                placeholder = { Text("e.g. Birthday Cake, Gym Supplies, Electronics...") },
+                leadingIcon = { Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = DeepOceanSecondary) },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = DeepOceanSecondary,
+                    unfocusedBorderColor = DividerLight
+                ),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 0b. Order Description Input
+            Text(
+                text = "ORDER DESCRIPTION (OPTIONAL)",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = TextSecondaryGrey
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            OutlinedTextField(
+                value = orderDescText,
+                onValueChange = { orderDescText = it },
+                placeholder = { Text("e.g. Handle with care, fragile items, call upon arrival...") },
+                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = TextSecondaryGrey) },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = DeepOceanSecondary,
+                    unfocusedBorderColor = DividerLight
+                ),
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 2
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -365,6 +420,8 @@ fun CreateOrderBottomSheet(
                     val finalPickup = pickupText.ifBlank { "Central Bakery, 10th Ave" }
                     val finalDelivery = deliveryText.ifBlank { "Downtown Office, Suite 400" }
                     onConfirmOrder(
+                        orderTitleText.trim(),
+                        orderDescText.trim(),
                         finalPickup,
                         pickupSelectedLat,
                         pickupSelectedLng,
@@ -373,7 +430,7 @@ fun CreateOrderBottomSheet(
                         deliverySelectedLng
                     )
                 },
-                enabled = !isSubmitting,
+                enabled = !isSubmitting && orderTitleText.isNotBlank(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = TealBluePrimary),
                 modifier = Modifier

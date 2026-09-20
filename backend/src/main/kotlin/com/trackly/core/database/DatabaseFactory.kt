@@ -32,8 +32,8 @@ object DatabaseFactory {
         Database.connect(dataSource)
 
         transaction {
-            logger.info("Creating database schemas for Users, Drivers, Orders, and OrderStatusHistory tables if not exists...")
-            SchemaUtils.create(UsersTable, DriversTable, OrdersTable, OrderStatusHistoryTable)
+            logger.info("Creating or updating database schemas for Users, Drivers, Orders, and OrderStatusHistory tables...")
+            SchemaUtils.createMissingTablesAndColumns(UsersTable, DriversTable, OrdersTable, OrderStatusHistoryTable)
         }
 
         logger.info("Database initialization completed successfully.")

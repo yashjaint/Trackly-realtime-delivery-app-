@@ -28,8 +28,11 @@ enum class OrderStatus {
 data class Order(
     val id: String,
     val orderNumber: String,
+    val title: String? = null,
+    val description: String? = null,
     val customerId: String,
     val driverId: String?,
+    val driverName: String? = null,
     val status: OrderStatus,
     val pickupAddress: String,
     val pickupLat: Double,
@@ -40,7 +43,9 @@ data class Order(
     val estimatedDurationMinutes: Int? = null,
     val createdAt: Long,
     val updatedAt: Long
-)
+) {
+    val displayTitle: String get() = if (!title.isNullOrBlank()) title else orderNumber
+}
 
 data class LocationEvent(
     val eventId: String,

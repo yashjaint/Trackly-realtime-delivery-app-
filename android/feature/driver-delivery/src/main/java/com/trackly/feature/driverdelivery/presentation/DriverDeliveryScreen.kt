@@ -348,18 +348,40 @@ fun DriverDeliveryScreenContent(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = order.orderNumber,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TextPrimaryCharcoal
-                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = order.displayTitle,
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimaryCharcoal,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = "ID: ${order.orderNumber}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TextSecondaryGrey
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Badge(
                                         containerColor = DeepOceanSecondary,
                                         contentColor = SurfaceWhite
                                     ) {
-                                        Text(order.status.name, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                                        Text(order.status.name.replace("_", " "), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                                     }
+                                }
+
+                                val desc = order.description
+                                if (!desc.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "Note: $desc",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextSecondaryGrey,
+                                        maxLines = 2,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
                                 }
 
                                 Spacer(modifier = Modifier.height(12.dp))

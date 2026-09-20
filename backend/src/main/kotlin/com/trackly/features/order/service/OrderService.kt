@@ -1,6 +1,7 @@
 package com.trackly.features.order.service
 
 import com.trackly.features.auth.domain.DriversTable
+import com.trackly.features.auth.domain.UsersTable
 import com.trackly.features.order.domain.OrderStateMachine
 import com.trackly.features.order.domain.OrderStatusEnum
 import com.trackly.features.order.domain.OrderStatusHistoryTable
@@ -8,6 +9,7 @@ import com.trackly.features.order.domain.OrdersTable
 import com.trackly.features.order.dto.CreateOrderRequest
 import com.trackly.features.order.dto.OrderDto
 import com.trackly.features.order.dto.OrderStatusHistoryDto
+import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
 import org.jetbrains.exposed.sql.and
@@ -35,6 +37,8 @@ class OrderService {
             OrdersTable.insert {
                 it[id] = newOrderId
                 it[orderNumber] = orderNum
+                it[title] = request.title
+                it[description] = request.description
                 it[OrdersTable.customerId] = customerId
                 it[driverId] = null
                 it[status] = OrderStatusEnum.CREATED.name
@@ -70,6 +74,15 @@ class OrderService {
             val orderRow = OrdersTable.selectAll().where { OrdersTable.id eq orderId }.singleOrNull()
                 ?: throw IllegalArgumentException("Order with ID '$orderIdStr' not found")
 
+            val driverIdVal = orderRow[OrdersTable.driverId]
+            val driverNameVal = if (driverIdVal != null) {
+                (DriversTable innerJoin UsersTable)
+                    .selectAll()
+                    .where { DriversTable.id eq driverIdVal }
+                    .singleOrNull()
+                    ?.get(UsersTable.name)
+            } else null
+
             val historyRows = OrderStatusHistoryTable.selectAll()
                 .where { OrderStatusHistoryTable.orderId eq orderId }
                 .orderBy(OrderStatusHistoryTable.createdAt to SortOrder.ASC)
@@ -87,8 +100,11 @@ class OrderService {
             OrderDto(
                 id = orderRow[OrdersTable.id].toString(),
                 orderNumber = orderRow[OrdersTable.orderNumber],
+                title = orderRow[OrdersTable.title],
+                description = orderRow[OrdersTable.description],
                 customerId = orderRow[OrdersTable.customerId].toString(),
-                driverId = orderRow[OrdersTable.driverId]?.toString(),
+                driverId = driverIdVal?.toString(),
+                driverName = driverNameVal,
                 status = orderRow[OrdersTable.status],
                 pickupAddress = orderRow[OrdersTable.pickupAddress],
                 pickupLat = orderRow[OrdersTable.pickupLat],

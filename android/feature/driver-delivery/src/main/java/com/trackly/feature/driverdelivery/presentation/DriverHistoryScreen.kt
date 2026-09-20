@@ -97,18 +97,29 @@ fun DriverJobHistoryCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header: Order Number & Status
+            // Header: Order Title & Status Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = order.orderNumber,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimaryCharcoal
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = order.displayTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimaryCharcoal,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "ID: ${order.orderNumber}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondaryGrey
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 val (badgeBg, badgeText) = when (order.status) {
                     OrderStatus.DELIVERED -> StatusEmeraldSuccess to SurfaceWhite

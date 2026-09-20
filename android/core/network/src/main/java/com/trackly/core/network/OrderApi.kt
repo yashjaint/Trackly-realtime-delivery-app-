@@ -9,6 +9,8 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 
 data class ApiCreateOrderRequest(
+    val title: String? = null,
+    val description: String? = null,
     val pickupAddress: String,
     val pickupLat: Double,
     val pickupLng: Double,
@@ -34,8 +36,11 @@ data class ApiOrderStatusHistoryDto(
 data class ApiOrderDto(
     val id: String,
     val orderNumber: String,
+    val title: String? = null,
+    val description: String? = null,
     val customerId: String,
     val driverId: String? = null,
+    val driverName: String? = null,
     val status: String,
     val pickupAddress: String,
     val pickupLat: Double,

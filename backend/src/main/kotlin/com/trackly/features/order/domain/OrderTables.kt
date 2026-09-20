@@ -10,6 +10,8 @@ import java.util.UUID
 object OrdersTable : Table("orders") {
     val id = uuid("id").defaultExpression(org.jetbrains.exposed.sql.CustomFunction("random_uuid", org.jetbrains.exposed.sql.UUIDColumnType()))
     val orderNumber = varchar("order_number", 64).uniqueIndex()
+    val title = varchar("title", 128).nullable()
+    val description = varchar("description", 512).nullable()
     val customerId = reference("customer_id", UsersTable.id)
     val driverId = reference("driver_id", DriversTable.id).nullable()
     val status = varchar("status", 32)

@@ -16,7 +16,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 interface OrderRepository {
-    suspend fun createOrder(pickupAddress: String, pickupLat: Double, pickupLng: Double, deliveryAddress: String, deliveryLat: Double, deliveryLng: Double): Resource<Order>
+    suspend fun createOrder(title: String? = null, description: String? = null, pickupAddress: String, pickupLat: Double, pickupLng: Double, deliveryAddress: String, deliveryLat: Double, deliveryLng: Double): Resource<Order>
     suspend fun getActiveOrder(): Resource<Order>
     suspend fun getActiveOrders(): Resource<List<Order>>
     suspend fun getOrderHistory(): Resource<List<Order>>
@@ -43,6 +43,8 @@ class OrderRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createOrder(
+        title: String?,
+        description: String?,
         pickupAddress: String,
         pickupLat: Double,
         pickupLng: Double,
@@ -50,11 +52,13 @@ class OrderRepositoryImpl @Inject constructor(
         deliveryLat: Double,
         deliveryLng: Double
     ): Resource<Order> = withContext(Dispatchers.IO) {
-        Log.d(TAG, "Creating new order: pickup=$pickupAddress, delivery=$deliveryAddress")
+        Log.d(TAG, "Creating new order: title=$title, pickup=$pickupAddress, delivery=$deliveryAddress")
         try {
             val response = orderApi.createOrder(
                 authHeader = getAuthHeader(),
                 request = ApiCreateOrderRequest(
+                    title = title,
+                    description = description,
                     pickupAddress = pickupAddress,
                     pickupLat = pickupLat,
                     pickupLng = pickupLng,
@@ -303,8 +307,11 @@ class OrderRepositoryImpl @Inject constructor(
         return Order(
             id = dto.id,
             orderNumber = dto.orderNumber,
+            title = dto.title,
+            description = dto.description,
             customerId = dto.customerId,
             driverId = dto.driverId,
+            driverName = dto.driverName,
             status = status,
             pickupAddress = dto.pickupAddress,
             pickupLat = dto.pickupLat,

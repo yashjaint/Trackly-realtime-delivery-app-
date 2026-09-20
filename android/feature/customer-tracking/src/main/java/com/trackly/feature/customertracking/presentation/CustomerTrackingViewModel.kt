@@ -162,6 +162,8 @@ class CustomerTrackingViewModel @Inject constructor(
     }
 
     fun createCustomOrder(
+        title: String? = null,
+        description: String? = null,
         pickupAddress: String,
         pickupLat: Double,
         pickupLng: Double,
@@ -169,11 +171,13 @@ class CustomerTrackingViewModel @Inject constructor(
         deliveryLat: Double,
         deliveryLng: Double
     ) {
-        Log.d(TAG, "Creating custom order: pickup=$pickupAddress, delivery=$deliveryAddress")
+        Log.d(TAG, "Creating custom order: title=$title, pickup=$pickupAddress, delivery=$deliveryAddress")
         _isSubmittingOrder.value = true
         _uiState.value = CustomerOrderUiState.Loading
         viewModelScope.launch {
             val result = orderRepository.createOrder(
+                title = title,
+                description = description,
                 pickupAddress = pickupAddress,
                 pickupLat = pickupLat,
                 pickupLng = pickupLng,
