@@ -1,82 +1,119 @@
-# Trackly — Real-Time Intelligent Delivery System
+# Trackly — Real-Time Intelligent Logistics & Package Delivery Ecosystem
 
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0-blue.svg?logo=kotlin)
 ![Android](https://img.shields.io/badge/Android-Jetpack%20Compose-green.svg?logo=android)
-![Backend](https://img.shields.io/badge/Backend-Ktor%20Framework-orange.svg?logo=ktor)
-![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2B%20MVVM-purple.svg)
-![WebSockets](https://img.shields.io/badge/RealTime-WebSockets-red.svg)
+![Architecture](https://img.shields.io/badge/Architecture-MVVM%20%2B%20Clean%20%2B%20Multi--Module-purple.svg)
+![RealTime](https://img.shields.io/badge/RealTime-WebSockets-red.svg)
+![AI](https://img.shields.io/badge/AI-Google%20Gemini-sparkles.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-Trackly is a production-grade, full-stack real-time delivery tracking platform featuring a **Jetpack Compose Android Application** and a high-performance **Ktor Kotlin Backend Monolith**.
-
-Built with SDE-2 Clean Architecture standards, Trackly manages full delivery lifecycles, real-time GPS streaming over WebSockets, smooth 60fps map marker interpolation, and persistent state management.
+> **Trackly** is a production-grade Android application and real-time logistics tracking platform built by **Yash Jaint** using **MVVM (Model-View-ViewModel)** pattern, **Multi-Module Clean Architecture**, live driver GPS streaming over WebSockets, custom Google Maps rendering with 60fps marker interpolation, dynamic route ETA computation, an AI-powered assistant (Gemini API), and a Kotlin Ktor server backend.
 
 ---
 
-## 🚀 Key Technical Highlights
+## 👨‍💻 Author & Original Ownership Notice
 
-- **Full-Duplex WebSockets Engine**: Live position broadcasting endpoint (`/ws/tracking/{orderId}`) streaming driver GPS updates to subscribed tracking clients in real-time.
-- **Android Location Foreground Service**: Persistent, high-accuracy GPS tracking service (`LocationService.kt`) with heads-up status bar notifications and Android 14+ compatibility.
-- **Smooth Google Maps Integration**: Custom `LiveTrackingMapView` featuring pickup/dropoff markers, route polylines, and **60fps vehicle marker interpolation** (`animateFloatAsState`) eliminating map marker jitter.
-- **Order State Machine**: Strict pipeline enforcing deterministic status transitions (`CREATED` $\rightarrow$ `CONFIRMED` $\rightarrow$ `PREPARING` $\rightarrow$ `READY_FOR_PICKUP` $\rightarrow$ `PICKED_UP` $\rightarrow$ `OUT_FOR_DELIVERY` $\rightarrow$ `DELIVERED`).
-- **Security & Persistence**: JWT authentication, BCrypt password hashing, persistent H2 file database (`./build/trackly_db`), and encrypted client session storage.
+**Trackly** was conceptualized, architected, and engineered by **Yash Jaint**.
+
+- **Author**: Yash Jaint
+- **GitHub**: [@yashjaint](https://github.com/yashjaint)
+- **LinkedIn**: [Yash Jaint](https://www.linkedin.com/in/yash-jaint/)
+- **Copyright**: © 2026 Yash Jaint. Licensed under the [MIT License](LICENSE).
+
+---
+
+## 📱 Android Client Features & Architecture
+
+Trackly's Android client is engineered using **MVVM (Model-View-ViewModel)** and **Clean Architecture** principles following modern Android Jetpack guidelines.
+
+### 🏛️ Multi-Module & MVVM Architecture
+The application combines **MVVM UI Design Pattern** with a **Multi-Module project structure** decoupled into 8+ specialized feature and core modules:
+- `:app` — Entry point, Hilt dependency graph container, and global Navigation host.
+- `:feature:customer-tracking` — Customer portal featuring active delivery status timeline, custom order creation with address search autocomplete, and live map view.
+- `:feature:driver-delivery` — Driver portal for accepting delivery jobs, updating order milestones, and broadcasting live location.
+- `:feature:ai-assistant` — Gemini-powered AI chatbot sheet for instant order status inquiries and delivery assistance.
+- `:feature:auth` — Authentication screens (Login, Registration with role selection & vehicle number).
+- `:core:network` — Domain repositories (`AuthRepository`, `OrderRepository`, `AddressSearchRepository`) and Data implementations (`Impl`) enforcing strict layer separation.
+- `:core:location` — Foreground Service (`LocationService.kt`) broadcasting high-accuracy GPS coordinates in the background.
+- `:core:websocket` — Ktor WebSockets engine (`TrackingWebSocketClient.kt`) managing full-duplex real-time location frame streams.
+- `:core:common` — Custom Jetpack Compose UI design system tokens, `LiveTrackingMapView`, and Account Details modal.
+- `:core:model` — Type-safe domain models and status enums.
+
+---
+
+## 🔥 Key Technical Highlights
+
+1. **Full-Duplex WebSockets Real-Time Location Engine**:
+   - Streams live driver GPS coordinates (`lat`, `lng`) to subscribed customer clients via `/ws/location`.
+2. **Foreground Location Broadcast Service**:
+   - Persistent Android `ForegroundService` with heads-up status bar notifications for uninterrupted background tracking.
+3. **Google Maps SDK & Smooth 60fps Marker Interpolation**:
+   - Custom map composable featuring dynamic pickup/dropoff markers, route polyline rendering, auto-adjusting camera bounds, and smooth vehicle marker position interpolation (`animateFloatAsState`).
+4. **Distance & Dynamic Haversine Route ETA**:
+   - Dynamic real-time arrival estimation computed using Haversine spherical distance calculations and speed metrics rather than hardcoded static fallbacks.
+5. **Integrated Gemini AI Assistant**:
+   - Interactive bottom-sheet AI assistant allowing customers to inquire about their active orders in natural language using the Google Gemini API.
+6. **Cascading Account Deletion Rules**:
+   - Conditional account deletion business logic preventing account deletion during active deliveries for both customers and drivers, backed by cascading database foreign key cleanup.
 
 ---
 
 ## 🛠️ Technology Stack
 
-### Android Client (`/android`)
-- **UI Framework**: Jetpack Compose, Material 3, Custom Design System (Deep Ocean palette)
-- **Architecture**: Multi-module Clean Architecture (`:app`, `:core:model`, `:core:network`, `:core:location`, `:core:websocket`, `:feature:auth`, `:feature:customer-tracking`, `:feature:driver-delivery`)
-- **Dependency Injection**: Dagger Hilt
-- **Async & Reactive**: Kotlin Coroutines, StateFlow, Flow
-- **Maps & Location**: Google Maps Compose SDK, FusedLocationProviderClient
-
-### Ktor Backend (`/backend`)
-- **Server Framework**: Ktor 2.3 (Netty Engine)
-- **Real-Time Streaming**: Ktor Server WebSockets
-- **Database & ORM**: Exposed ORM with HikariCP Connection Pooling & Persistent H2 Disk Storage
-- **Security**: JWT Authentication & BCrypt Hashing
+| Layer | Technologies Used |
+| :--- | :--- |
+| **Android UI** | Jetpack Compose, Material Design 3, Glassmorphism design tokens |
+| **Android Core** | Kotlin, Coroutines, StateFlow, Flow |
+| **Architecture** | **MVVM (Model-View-ViewModel)** + **Clean Architecture** (Domain / Data / UI) + **Multi-Module** |
+| **Dependency Injection** | Dagger Hilt |
+| **GIS & Maps** | Google Maps SDK for Android, FusedLocationProviderClient |
+| **Networking** | Retrofit, OkHttp3, Ktor Client WebSockets |
+| **AI Integration** | Google Gemini API (Firebase AI Logic / REST) |
+| **Backend Server** | Ktor Server (Netty Engine), Exposed ORM, HikariCP |
+| **Database** | Persistent H2 Database with PostgreSQL compatibility mode |
+| **Security** | JWT Authentication, BCrypt Password Hashing |
 
 ---
 
-## 📁 Repository Structure
+## 📁 Project Directory Layout
 
 ```
 Trackly/
-├── android/                   # Android Jetpack Compose Application
-│   ├── app/                   # Main Application Entrypoint & Navigation
-│   ├── core/                  # Core Libraries & Feature-Agnostic Modules
-│   │   ├── model/             # Shared Data Models & Enums
-│   │   ├── network/           # Retrofit & Ktor HTTP API Clients & SessionManager
-│   │   ├── location/          # Android Location Foreground Service & LocationClient
-│   │   ├── websocket/         # Ktor Client WebSockets Engine
-│   │   └── common/            # Design System Tokens & LiveTrackingMapView
-│   └── feature/               # Domain Feature Modules
-│       ├── auth/              # Login & Registration Screens
-│       ├── customer-tracking/ # Active Delivery Tracking UI & Timeline
-│       └── driver-delivery/   # Driver Portal & Status Action Pipeline
-└── backend/                   # Ktor Kotlin Backend Server Monolith
-    └── src/main/kotlin/com/trackly/
-        ├── core/              # Database Factory & Security Config
-        └── features/          # Server Features (Auth, Orders, Driver, Tracking WebSockets)
+├── android/                   # Multi-Module Jetpack Compose Android Client
+│   ├── app/                   # App Navigation & Hilt Setup
+│   ├── core/                  # Core Modules (Model, Network, Location, WebSocket, Common)
+│   └── feature/               # Feature Modules (Auth, Customer, Driver, AI Assistant)
+├── backend/                   # Asynchronous Ktor Kotlin Backend Monolith
+│   └── src/main/kotlin/com/trackly/
+│       ├── core/              # Database Factory & JWT Security
+│       └── features/          # Auth, Order Management, Driver Location & WebSockets
+├── LICENSE                    # MIT Copyright License (Yash Jain)
+└── README.md                  # Project Documentation
 ```
 
 ---
 
-## 🚦 Quick Start Guide
+## 🚀 Quick Start & Installation
 
-### 1. Run the Backend Server
+### 1. Start the Backend Server
 ```bash
 cd backend
+export JAVA_HOME="/path/to/jdk-17"
 ./gradlew run
 ```
-The server will start listening at `http://0.0.0.0:8080`.
+The backend server runs on `http://0.0.0.0:8080`.
 
-### 2. Forward ADB Port & Run Android App
-Connect your Android physical device or start an emulator, then execute:
+### 2. Build & Deploy the Android App
+Connect an Android device or emulator and run:
 ```bash
 adb reverse tcp:8080 tcp:8080
 cd android
-./gradlew assembleDebug
+./gradlew installDebug
 ```
-Install the generated APK onto your device (`app/build/outputs/apk/debug/app-debug.apk`).
+
+---
+
+## 📜 License & Copyright
+
+Copyright © 2026 **Yash Jaint**.  
+This project is released under the [MIT License](LICENSE).
