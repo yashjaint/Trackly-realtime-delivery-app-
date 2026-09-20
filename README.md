@@ -9,9 +9,10 @@
 ![Networking](https://img.shields.io/badge/API-Retrofit%20%2B%20REST-blueviolet.svg)
 ![RealTime](https://img.shields.io/badge/RealTime-WebSockets-red.svg)
 ![AI](https://img.shields.io/badge/AI-Google%20Gemini-sparkles.svg)
+![Backend](https://img.shields.io/badge/Backend-Ktor%20Framework-orange.svg?logo=ktor)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-> **Trackly** is a production-grade native Android application for real-time package delivery and live logistics tracking engineered by **Yash Jaint**. Built using **Multi-View View Model (MVVM)** pattern and **Multi-Module Clean Architecture with Domain Use Cases**, Trackly leverages **Dagger Hilt Dependency Injection**, **Kotlin Coroutines**, **StateFlow**, **Room Database**, **Retrofit REST API Integration**, **Google Maps SDK**, and **Google Gemini AI Integration** to deliver a seamless real-time tracking experience for both customers and delivery drivers.
+> **Trackly** is a production-grade native Android application for real-time package delivery and live logistics tracking engineered by **Yash Jaint**. Built using **Multi-View View Model (MVVM)** pattern and **Multi-Module Clean Architecture with Domain Use Cases**, Trackly leverages **Dagger Hilt Dependency Injection**, **Kotlin Coroutines**, **StateFlow**, **Room Database**, **Retrofit REST API Integration**, **Google Maps SDK**, and **Google Gemini AI Integration**, powered by an asynchronous **Ktor Kotlin Backend Server** to deliver a seamless real-time tracking experience for both customers and delivery drivers.
 
 ---
 
@@ -50,9 +51,9 @@ Trackly provides tailored experiences for both Customers and Delivery Drivers:
 
 ---
 
-## 📱 Android Technology & Architecture Stack
+## 📱 Technology & Architecture Stack
 
-Trackly is engineered following modern Android development guidelines:
+Trackly is engineered following modern Android and Kotlin development guidelines:
 
 | Layer | Technologies & Frameworks Used |
 | :--- | :--- |
@@ -65,14 +66,15 @@ Trackly is engineered following modern Android development guidelines:
 | **Maps & Location** | Google Maps SDK for Android, FusedLocationProviderClient, Android Foreground Service |
 | **Networking & APIs** | **Retrofit**, OkHttp3 REST API Integration, Ktor WebSockets Client |
 | **AI Integration** | **Google Gemini API Integration** |
+| **Backend Service** | **Ktor Kotlin Backend Server** (Netty Engine, Exposed ORM, HikariCP Connection Pooling, H2 DB) |
 
 ---
 
-## 📁 Android Module & Clean Architecture Layout
+## 📁 Repository Directory Layout
 
 ```
 Trackly/
-├── android/
+├── android/                   # Multi-Module Jetpack Compose Android Client
 │   ├── app/                   # Navigation Host & Hilt Application Entrypoint
 │   ├── feature/               # UI Feature Modules (MVVM + Domain Use Cases)
 │   │   ├── customer-tracking/ # Active Tracking, Order Timeline & Address Autocomplete
@@ -86,6 +88,10 @@ Trackly/
 │       ├── websocket/         # Real-Time WebSocket Location Engine
 │       ├── model/             # Shared Domain Models & Enums
 │       └── common/            # Design System, Google Maps View & Dialogs
+├── backend/                   # Asynchronous Ktor Kotlin Backend Monolith
+│   └── src/main/kotlin/com/trackly/
+│       ├── core/              # Database Factory & JWT Security Config
+│       └── features/          # Auth, Order Management, Driver Location & WebSockets
 ├── LICENSE                    # MIT Copyright License (Yash Jaint)
 └── README.md                  # Project Documentation
 ```
@@ -94,16 +100,18 @@ Trackly/
 
 ## 🚀 Quick Start & Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yashjaint/Trackly.git
-   cd Trackly/android
-   ```
-2. Open `android/` in Android Studio.
-3. Build and install the debug APK on your device:
-   ```bash
-   ./gradlew installDebug
-   ```
+### 1. Start the Ktor Backend Server
+```bash
+cd backend
+./gradlew run
+```
+
+### 2. Build & Deploy the Android Application
+Open `android/` in Android Studio or build via CLI:
+```bash
+cd android
+./gradlew installDebug
+```
 
 ---
 
