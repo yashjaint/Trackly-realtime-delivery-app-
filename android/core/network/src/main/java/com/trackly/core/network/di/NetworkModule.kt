@@ -17,8 +17,35 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    // USB ADB reverse port forwarding (127.0.0.1:8080) for 100% reliable physical device connection
-    private const val BASE_URL = "http://127.0.0.1:8080/"
+    private fun checkIsEmulator(): Boolean {
+        val brand = android.os.Build.BRAND
+        val device = android.os.Build.DEVICE
+        val fingerprint = android.os.Build.FINGERPRINT
+        val hardware = android.os.Build.HARDWARE
+        val model = android.os.Build.MODEL
+        val manufacturer = android.os.Build.MANUFACTURER
+        val product = android.os.Build.PRODUCT
+
+        return (brand.startsWith("generic") && device.startsWith("generic")) ||
+                fingerprint.startsWith("generic") ||
+                fingerprint.startsWith("unknown") ||
+                hardware.contains("goldfish") ||
+                hardware.contains("ranchu") ||
+                model.contains("google_sdk") ||
+                model.contains("Emulator") ||
+                model.contains("Android SDK built for x86") ||
+                manufacturer.contains("Genymotion") ||
+                product.contains("sdk_gphone") ||
+                product.contains("google_sdk") ||
+                product.contains("sdk") ||
+                product.contains("sdk_x86") ||
+                product.contains("vbox86p") ||
+                product.contains("emulator") ||
+                product.contains("simulator")
+    }
+
+    private val BASE_URL: String
+        get() = if (checkIsEmulator()) "http://10.0.2.2:8080/" else "http://192.168.0.111:8080/"
 
     @Provides
     @Singleton

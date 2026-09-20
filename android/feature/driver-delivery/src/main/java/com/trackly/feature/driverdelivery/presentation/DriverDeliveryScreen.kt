@@ -34,11 +34,48 @@ fun DriverDeliveryScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
 
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    var hasNotificationPermission by remember {
+        mutableStateOf(
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                androidx.core.content.ContextCompat.checkSelfPermission(
+                    context, android.Manifest.permission.POST_NOTIFICATIONS
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            } else true
+        )
+    }
+
+    fun openAppSettings() {
+        try {
+            val intent = android.content.Intent(
+                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                android.net.Uri.fromParts("package", context.packageName, null)
+            ).apply {
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("DriverDeliveryScreen", "Error opening app settings", e)
+        }
+    }
+
     val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val locationGranted = permissions[android.Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                 permissions[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        hasLocationPermission = locationGranted
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            hasNotificationPermission = permissions[android.Manifest.permission.POST_NOTIFICATIONS] == true
+        }
+
         if (locationGranted) {
             val intent = android.content.Intent(context, com.trackly.core.location.LocationService::class.java).apply {
                 action = com.trackly.core.location.LocationService.ACTION_START
@@ -47,30 +84,50 @@ fun DriverDeliveryScreen(
         }
     }
 
+    fun requestOrOpenSettings() {
+        if (!hasLocationPermission || !hasNotificationPermission) {
+            val perms = mutableListOf(
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                perms.add(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+            permissionLauncher.launch(perms.toTypedArray())
+            // Also open App Settings so user can enable directly if OS suppresses dialog
+            openAppSettings()
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.fetchActiveDelivery()
 
-        val perms = mutableListOf(
-            android.Manifest.permission.ACCESS_FINE_LOCATION,
-            android.Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            perms.add(android.Manifest.permission.POST_NOTIFICATIONS)
-        }
-        permissionLauncher.launch(perms.toTypedArray())
-
-        val intent = android.content.Intent(context, com.trackly.core.location.LocationService::class.java).apply {
-            action = com.trackly.core.location.LocationService.ACTION_START
-        }
-        try {
-            androidx.core.content.ContextCompat.startForegroundService(context, intent)
-        } catch (e: Exception) {
-            android.util.Log.e("DriverDeliveryScreen", "Error starting LocationService", e)
+        if (hasLocationPermission) {
+            val intent = android.content.Intent(context, com.trackly.core.location.LocationService::class.java).apply {
+                action = com.trackly.core.location.LocationService.ACTION_START
+            }
+            try {
+                androidx.core.content.ContextCompat.startForegroundService(context, intent)
+            } catch (e: Exception) {
+                android.util.Log.e("DriverDeliveryScreen", "Error starting LocationService", e)
+            }
+        } else {
+            val perms = mutableListOf(
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                perms.add(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+            permissionLauncher.launch(perms.toTypedArray())
         }
     }
 
     DriverDeliveryScreenContent(
         uiState = uiState,
+        hasLocationPermission = hasLocationPermission,
+        hasNotificationPermission = hasNotificationPermission,
+        onRequestPermission = { requestOrOpenSettings() },
         onUpdateStatus = { orderId, status -> viewModel.updateStatus(orderId, status, "Driver updated state to ${status.name}") },
         onRefreshClick = { viewModel.fetchActiveDelivery() },
         onLogout = {
@@ -87,16 +144,46 @@ fun DriverDeliveryScreen(
 @Composable
 fun DriverDeliveryScreenContent(
     uiState: DriverDeliveryUiState,
+    hasLocationPermission: Boolean = true,
+    hasNotificationPermission: Boolean = true,
+    onRequestPermission: () -> Unit = {},
     onUpdateStatus: (orderId: String, newStatus: OrderStatus) -> Unit,
     onRefreshClick: () -> Unit,
     onLogout: () -> Unit = {}
 ) {
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Log Out", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to log out of Trackly?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        onLogout()
+                    }
+                ) {
+                    Text("Log Out", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel", color = TextSecondaryGrey)
+                }
+            },
+            containerColor = SurfaceWhite,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Driver Delivery Portal", fontWeight = FontWeight.Bold) },
                 actions = {
-                    IconButton(onClick = onLogout) {
+                    IconButton(onClick = { showLogoutDialog = true }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                             contentDescription = "Logout",
@@ -117,6 +204,51 @@ fun DriverDeliveryScreenContent(
                 .padding(innerPadding)
                 .background(BackgroundLight)
         ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (!hasLocationPermission || !hasNotificationPermission) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (!hasLocationPermission) Color(0xFFFFF3E0) else Color(0xFFE3F2FD)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = if (!hasLocationPermission) Color(0xFFE65100) else TealBluePrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (!hasLocationPermission) "Location Permission Required" else "Notification Permission Optional",
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (!hasLocationPermission) Color(0xFFE65100) else TealBluePrimary,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    text = if (!hasLocationPermission)
+                                        "Enable location in Settings so customers can track your live position."
+                                    else
+                                        "Enable notifications in Settings to see background status alerts.",
+                                    color = TextSecondaryGrey,
+                                    fontSize = 12.sp
+                                )
+                            }
+                            TextButton(onClick = onRequestPermission) {
+                                Text("Enable in Settings", fontWeight = FontWeight.Bold, color = TealBluePrimary)
+                            }
+                        }
+                    }
+                }
+
+                Box(modifier = Modifier.weight(1f)) {
             when (uiState) {
                 is DriverDeliveryUiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -377,12 +509,29 @@ fun DriverDeliveryScreenContent(
                                     colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text(
-                                        text = "Delivery Completed Successfully!",
-                                        color = StatusEmeraldSuccess,
+                                    Column(
                                         modifier = Modifier.padding(16.dp),
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = StatusEmeraldSuccess)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Delivery Completed Successfully!",
+                                                color = StatusEmeraldSuccess,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Button(
+                                            onClick = onRefreshClick,
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = DeepOceanSecondary),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Check for Next Delivery", fontWeight = FontWeight.Bold)
+                                        }
+                                    }
                                 }
                             }
                             else -> {}
@@ -416,6 +565,8 @@ fun DriverDeliveryScreenContent(
             }
         }
     }
+}
+}
 }
 
 @Preview(showBackground = true, name = "Driver Active Delivery Preview")

@@ -1,6 +1,7 @@
 package com.trackly.feature.auth.presentation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,8 +13,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -21,6 +24,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.trackly.core.common.R
 import com.trackly.core.common.theme.*
 import com.trackly.core.model.UserRole
 
@@ -71,22 +75,13 @@ fun LoginScreenContent(
             verticalArrangement = Arrangement.Center
         ) {
             // App Logo & Title Header
-            Box(
+            Image(
+                painter = painterResource(id = R.drawable.ic_launcher),
+                contentDescription = "Trackly Logo",
                 modifier = Modifier
-                    .size(72.dp)
-                    .background(
-                        brush = Brush.linearGradient(listOf(TealBluePrimary, DeepOceanSecondary)),
-                        shape = RoundedCornerShape(16.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "T",
-                    color = SurfaceWhite,
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(18.dp))
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
