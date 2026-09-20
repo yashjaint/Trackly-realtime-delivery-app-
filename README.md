@@ -7,18 +7,18 @@
 ![AI](https://img.shields.io/badge/AI-Google%20Gemini-sparkles.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-> **Trackly** is a production-grade, multi-module Android application and real-time logistics tracking platform built from the ground up by **Yash Jain**. It features live driver GPS location streaming over WebSockets, custom Google Maps rendering with 60fps marker interpolation, dynamic route ETA computation, an AI-powered assistant (Gemini API), and a Kotlin Ktor server backend.
+> **Trackly** is a production-grade, multi-module Android application and real-time logistics tracking platform built from the ground up by **Yash Jaint**. It features live driver GPS location streaming over WebSockets, custom Google Maps rendering with 60fps marker interpolation, dynamic route ETA computation, an AI-powered assistant (Gemini API), and a Kotlin Ktor server backend.
 
 ---
 
 ## 👨‍💻 Author & Original Ownership Notice
 
-**Trackly** was conceptualized, architected, and engineered by **Yash Jain**.
+**Trackly** was conceptualized, architected, and engineered by **Yash Jaint**.
 
-- **Author**: Yash Jain
-- **GitHub**: [@yash-jaint](https://github.com/yash-jaint)
-- **LinkedIn**: [Yash Jain](https://linkedin.com/in/yash-jain) *(Replace with your URL)*
-- **Copyright**: © 2026 Yash Jain. Licensed under the [MIT License](LICENSE).
+- **Author**: Yash Jaint
+- **GitHub**: [@yashjaint](https://github.com/yashjaint)
+- **LinkedIn**: [Yash Jaint](https://www.linkedin.com/in/yash-jaint/)
+- **Copyright**: © 2026 Yash Jaint. Licensed under the [MIT License](LICENSE).
 
 ---
 
@@ -115,5 +115,5 @@ cd android
 
 ## 📜 License & Copyright
 
-Copyright © 2026 **Yash Jain**.  
+Copyright © 2026 **Yash Jaint**.  
 This project is released under the [MIT License](LICENSE).
