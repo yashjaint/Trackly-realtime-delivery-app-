@@ -5,6 +5,7 @@
 ![Architecture](https://img.shields.io/badge/Architecture-MVVM%20%2B%20Clean%20%2B%20Multi--Module-purple.svg)
 ![RealTime](https://img.shields.io/badge/RealTime-WebSockets-red.svg)
 ![AI](https://img.shields.io/badge/AI-Google%20Gemini-sparkles.svg)
+![Antigravity](https://img.shields.io/badge/Developed%20With-Google%20Antigravity-4285F4.svg?logo=google)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 > **Trackly** is a feature-packed, native Android application engineered by **Yash Jaint**. Built using **MVVM (Model-View-ViewModel)** and **Multi-Module Clean Architecture**, Trackly provides a seamless real-time logistics experience for both customers and drivers, featuring live Google Maps tracking, 60fps vehicle marker smoothing, automated address search suggestions, dynamic route ETAs, an AI-powered assistant (Gemini API), and profile management with active delivery deletion safeguards.
@@ -60,6 +61,7 @@ Trackly is engineered following modern Android development guidelines:
 | **Maps & Location** | Google Maps SDK for Android, FusedLocationProviderClient, Android Foreground Service |
 | **Real-Time Data** | WebSockets Client (`TrackingWebSocketClient.kt`), Retrofit, OkHttp3 |
 | **AI Integration** | Google Gemini API (Firebase AI Logic / REST) |
+| **AI Pair Programming** | Google Antigravity Agentic AI Framework |
 
 ---
 
