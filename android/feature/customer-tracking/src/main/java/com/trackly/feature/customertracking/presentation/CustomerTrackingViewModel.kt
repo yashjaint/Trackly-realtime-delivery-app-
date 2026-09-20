@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.trackly.core.common.network.Resource
 import com.trackly.core.model.Order
-import com.trackly.core.model.OrderStatus
 import com.trackly.core.network.OrderRepository
 import com.trackly.core.websocket.TrackingWebSocketClient
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,6 +27,12 @@ sealed class CustomerOrderUiState {
     data class Error(val message: String) : CustomerOrderUiState()
 }
 
+data class CustomerHistoryUiState(
+    val isLoading: Boolean = false,
+    val orders: List<Order> = emptyList(),
+    val error: String? = null
+)
+
 @HiltViewModel
 class CustomerTrackingViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
@@ -40,6 +45,9 @@ class CustomerTrackingViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<CustomerOrderUiState>(CustomerOrderUiState.Idle)
     val uiState: StateFlow<CustomerOrderUiState> = _uiState.asStateFlow()
+
+    private val _historyState = MutableStateFlow(CustomerHistoryUiState())
+    val historyState: StateFlow<CustomerHistoryUiState> = _historyState.asStateFlow()
 
     private var webSocketJob: Job? = null
 
@@ -56,6 +64,24 @@ class CustomerTrackingViewModel @Inject constructor(
                 is Resource.Error -> {
                     Log.w(TAG, "No active order: ${result.message}")
                     _uiState.value = CustomerOrderUiState.NoActiveOrder
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    fun fetchOrderHistory() {
+        Log.d(TAG, "Fetching order history for Customer...")
+        _historyState.value = CustomerHistoryUiState(isLoading = true)
+        viewModelScope.launch {
+            when (val result = orderRepository.getOrderHistory()) {
+                is Resource.Success -> {
+                    Log.d(TAG, "Fetched ${result.data.size} orders for history")
+                    _historyState.value = CustomerHistoryUiState(orders = result.data, isLoading = false)
+                }
+                is Resource.Error -> {
+                    Log.e(TAG, "Error fetching order history: ${result.message}")
+                    _historyState.value = CustomerHistoryUiState(error = result.message, isLoading = false)
                 }
                 is Resource.Loading -> {}
             }
@@ -79,6 +105,7 @@ class CustomerTrackingViewModel @Inject constructor(
                     Log.d(TAG, "Sample order created: ${result.data.orderNumber}")
                     _uiState.value = CustomerOrderUiState.ActiveOrder(order = result.data)
                     startWebSocketObservation(result.data.id)
+                    fetchOrderHistory()
                 }
                 is Resource.Error -> {
                     Log.e(TAG, "Sample order creation failed: ${result.message}")

@@ -35,15 +35,19 @@ fun CustomerOrderScreen(
     onLogout: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val historyState by viewModel.historyState.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.fetchActiveOrder()
+        viewModel.fetchOrderHistory()
     }
 
     CustomerOrderScreenContent(
         uiState = uiState,
+        historyState = historyState,
         onCreateOrderClick = { viewModel.createSampleOrder() },
         onRefreshClick = { viewModel.fetchActiveOrder() },
+        onRefreshHistory = { viewModel.fetchOrderHistory() },
         onOpenAiChat = onOpenAiChat,
         onLogout = onLogout
     )
@@ -53,11 +57,14 @@ fun CustomerOrderScreen(
 @Composable
 fun CustomerOrderScreenContent(
     uiState: CustomerOrderUiState,
+    historyState: CustomerHistoryUiState,
     onCreateOrderClick: () -> Unit,
     onRefreshClick: () -> Unit,
+    onRefreshHistory: () -> Unit,
     onOpenAiChat: (orderId: String) -> Unit,
     onLogout: () -> Unit = {}
 ) {
+    var selectedTabIndex by remember { mutableStateOf(0) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showAiBottomSheet by remember { mutableStateOf(false) }
 
@@ -100,22 +107,44 @@ fun CustomerOrderScreenContent(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Active Delivery", fontWeight = FontWeight.Bold) },
-                actions = {
-                    IconButton(onClick = { showLogoutDialog = true }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Logout",
-                            tint = SurfaceWhite
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = TealBluePrimary,
-                    titleContentColor = SurfaceWhite
+            Column {
+                TopAppBar(
+                    title = { Text(if (selectedTabIndex == 0) "Active Delivery" else "Order History", fontWeight = FontWeight.Bold) },
+                    actions = {
+                        IconButton(onClick = { showLogoutDialog = true }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                contentDescription = "Logout",
+                                tint = SurfaceWhite
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = TealBluePrimary,
+                        titleContentColor = SurfaceWhite
+                    )
                 )
-            )
+
+                TabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    containerColor = TealBluePrimary,
+                    contentColor = SurfaceWhite
+                ) {
+                    Tab(
+                        selected = selectedTabIndex == 0,
+                        onClick = { selectedTabIndex = 0 },
+                        text = { Text("Active Delivery", fontWeight = FontWeight.Bold, color = SurfaceWhite) }
+                    )
+                    Tab(
+                        selected = selectedTabIndex == 1,
+                        onClick = {
+                            selectedTabIndex = 1
+                            onRefreshHistory()
+                        },
+                        text = { Text("Order History", fontWeight = FontWeight.Bold, color = SurfaceWhite) }
+                    )
+                }
+            }
         }
     ) { innerPadding ->
         Box(
@@ -124,7 +153,13 @@ fun CustomerOrderScreenContent(
                 .padding(innerPadding)
                 .background(BackgroundLight)
         ) {
-            when (uiState) {
+            if (selectedTabIndex == 1) {
+                CustomerHistoryScreen(
+                    historyState = historyState,
+                    onRefresh = onRefreshHistory
+                )
+            } else {
+                when (uiState) {
                 is CustomerOrderUiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = TealBluePrimary)
@@ -354,6 +389,7 @@ fun CustomerOrderScreenContent(
         }
     }
 }
+}
 
 @Preview(showBackground = true, name = "Customer Active Order Preview")
 @Composable
@@ -378,8 +414,10 @@ fun CustomerOrderScreenPreview() {
                     updatedAt = System.currentTimeMillis()
                 )
             ),
+            historyState = CustomerHistoryUiState(),
             onCreateOrderClick = {},
             onRefreshClick = {},
+            onRefreshHistory = {},
             onOpenAiChat = {}
         )
     }

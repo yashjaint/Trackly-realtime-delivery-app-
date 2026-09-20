@@ -25,6 +25,9 @@ interface OrderDao {
     @Query("SELECT * FROM orders ORDER BY createdAt DESC")
     fun getAllOrdersFlow(): Flow<List<OrderEntity>>
 
+    @Query("SELECT * FROM orders ORDER BY createdAt DESC")
+    suspend fun getAllOrders(): List<OrderEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrder(order: OrderEntity)
 

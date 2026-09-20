@@ -42,6 +42,15 @@ fun Route.orderRoutes(orderService: OrderService) {
                 }
             }
 
+            get("/history") {
+                val principal = call.principal<JWTPrincipal>()
+                val userId = principal?.payload?.getClaim("userId")?.asString()
+                    ?: return@get call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Invalid user token", 401))
+
+                val history = orderService.getOrderHistoryForUser(userId)
+                call.respond(HttpStatusCode.OK, history)
+            }
+
             get("/{id}") {
                 val orderId = call.parameters["id"]
                     ?: return@get call.respond(HttpStatusCode.BadRequest, ErrorResponse("Missing order id", 400))

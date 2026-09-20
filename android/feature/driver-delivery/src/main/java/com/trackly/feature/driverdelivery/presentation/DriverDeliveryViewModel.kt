@@ -28,6 +28,12 @@ sealed class DriverDeliveryUiState {
     data class Error(val message: String) : DriverDeliveryUiState()
 }
 
+data class DriverHistoryUiState(
+    val isLoading: Boolean = false,
+    val orders: List<Order> = emptyList(),
+    val error: String? = null
+)
+
 @HiltViewModel
 class DriverDeliveryViewModel @Inject constructor(
     private val orderRepository: OrderRepository,
@@ -40,6 +46,9 @@ class DriverDeliveryViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<DriverDeliveryUiState>(DriverDeliveryUiState.Idle)
     val uiState: StateFlow<DriverDeliveryUiState> = _uiState.asStateFlow()
+
+    private val _historyState = MutableStateFlow(DriverHistoryUiState())
+    val historyState: StateFlow<DriverHistoryUiState> = _historyState.asStateFlow()
 
     private var webSocketJob: kotlinx.coroutines.Job? = null
 
@@ -56,6 +65,24 @@ class DriverDeliveryViewModel @Inject constructor(
                 is Resource.Error -> {
                     Log.w(TAG, "No active delivery for driver: ${result.message}")
                     _uiState.value = DriverDeliveryUiState.NoActiveDelivery
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
+
+    fun fetchOrderHistory() {
+        Log.d(TAG, "Fetching delivery history for Driver...")
+        _historyState.value = DriverHistoryUiState(isLoading = true)
+        viewModelScope.launch {
+            when (val result = orderRepository.getOrderHistory()) {
+                is Resource.Success -> {
+                    Log.d(TAG, "Fetched ${result.data.size} driver history jobs")
+                    _historyState.value = DriverHistoryUiState(orders = result.data, isLoading = false)
+                }
+                is Resource.Error -> {
+                    Log.e(TAG, "Error fetching driver history: ${result.message}")
+                    _historyState.value = DriverHistoryUiState(error = result.message, isLoading = false)
                 }
                 is Resource.Loading -> {}
             }
@@ -93,6 +120,7 @@ class DriverDeliveryViewModel @Inject constructor(
                 is Resource.Success -> {
                     Log.d(TAG, "Order status updated to ${result.data.status}")
                     _uiState.value = DriverDeliveryUiState.ActiveDelivery(order = result.data, isUpdating = false)
+                    fetchOrderHistory()
                 }
                 is Resource.Error -> {
                     Log.e(TAG, "Driver status update failed: ${result.message}")
@@ -119,6 +147,7 @@ class DriverDeliveryViewModel @Inject constructor(
                 is Resource.Success -> {
                     Log.d(TAG, "Driver accepted order: ${result.data.orderNumber}")
                     _uiState.value = DriverDeliveryUiState.ActiveDelivery(order = result.data)
+                    fetchOrderHistory()
                 }
                 is Resource.Error -> {
                     Log.e(TAG, "Accept order failed: ${result.message}")

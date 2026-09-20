@@ -18,6 +18,7 @@ import javax.inject.Singleton
 interface OrderRepository {
     suspend fun createOrder(pickupAddress: String, pickupLat: Double, pickupLng: Double, deliveryAddress: String, deliveryLat: Double, deliveryLng: Double): Resource<Order>
     suspend fun getActiveOrder(): Resource<Order>
+    suspend fun getOrderHistory(): Resource<List<Order>>
     suspend fun updateOrderStatus(orderId: String, newStatus: OrderStatus, remark: String?): Resource<Order>
     suspend fun assignDriver(orderId: String): Resource<Order>
     suspend fun syncPendingActions()
@@ -62,8 +63,9 @@ class OrderRepositoryImpl @Inject constructor(
                 )
             )
 
-            if (response.isSuccessful && response.body() != null) {
-                val dto = response.body()!!
+            val body = response.body()
+            if (response.isSuccessful && body != null) {
+                val dto = body
                 val order = mapDtoToOrder(dto)
                 orderDao.insertOrder(order.toEntity(isSynced = true))
                 Log.d(TAG, "Order created & cached in Room DB: orderId=${dto.id}")
@@ -89,8 +91,9 @@ class OrderRepositoryImpl @Inject constructor(
         Log.d(TAG, "Fetching active order (Remote + Room Cache)...")
         try {
             val response = orderApi.getActiveOrder(authHeader = getAuthHeader())
-            if (response.isSuccessful && response.body() != null) {
-                val dto = response.body()!!
+            val body = response.body()
+            if (response.isSuccessful && body != null) {
+                val dto = body
                 val order = mapDtoToOrder(dto)
                 orderDao.insertOrder(order.toEntity(isSynced = true))
                 Log.d(TAG, "Active order updated in Room DB: orderId=${dto.id}")
@@ -133,8 +136,9 @@ class OrderRepositoryImpl @Inject constructor(
                 request = ApiUpdateOrderStatusRequest(newStatus = newStatus.name, remark = remark)
             )
 
-            if (response.isSuccessful && response.body() != null) {
-                val dto = response.body()!!
+            val body = response.body()
+            if (response.isSuccessful && body != null) {
+                val dto = body
                 val order = mapDtoToOrder(dto)
                 orderDao.insertOrder(order.toEntity(isSynced = true))
                 Log.d(TAG, "Order status synced with server: ${dto.status}")
@@ -165,8 +169,9 @@ class OrderRepositoryImpl @Inject constructor(
                 orderId = orderId
             )
 
-            if (response.isSuccessful && response.body() != null) {
-                val dto = response.body()!!
+            val body = response.body()
+            if (response.isSuccessful && body != null) {
+                val dto = body
                 val order = mapDtoToOrder(dto)
                 orderDao.insertOrder(order.toEntity(isSynced = true))
                 Resource.Success(order)
@@ -202,8 +207,9 @@ class OrderRepositoryImpl @Inject constructor(
                                 orderId = action.orderId,
                                 request = ApiUpdateOrderStatusRequest(newStatus = status.name, remark = remark)
                             )
-                            if (response.isSuccessful && response.body() != null) {
-                                val order = mapDtoToOrder(response.body()!!)
+                            val body = response.body()
+                            if (response.isSuccessful && body != null) {
+                                val order = mapDtoToOrder(body)
                                 orderDao.insertOrder(order.toEntity(isSynced = true))
                                 pendingActionDao.deletePendingAction(action.id)
                                 Log.d(TAG, "Successfully synced pending action ${action.id}")
@@ -235,6 +241,40 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getOrderHistory(): Resource<List<Order>> = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Fetching order history from server...")
+        try {
+            val response = orderApi.getOrderHistory(authHeader = getAuthHeader())
+            val body = response.body()
+            if (response.isSuccessful && body != null) {
+                val orders = body.map { mapDtoToOrder(it) }
+                orders.forEach { orderDao.insertOrder(it.toEntity(isSynced = true)) }
+                Log.d(TAG, "Fetched & cached ${orders.size} history orders")
+                Resource.Success(orders)
+            } else {
+                val cached = orderDao.getAllOrders().map { it.toDomain() }
+                Resource.Success(cached)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Offline mode - fetching order history from Room DB", e)
+            val cached = orderDao.getAllOrders().map { it.toDomain() }
+            Resource.Success(cached)
+        }
+    }
+
+    private fun parseTimestamp(isoString: String?): Long {
+        if (isoString.isNullOrBlank()) return System.currentTimeMillis()
+        return try {
+            java.time.LocalDateTime.parse(isoString).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        } catch (e: Exception) {
+            try {
+                java.time.Instant.parse(isoString).toEpochMilli()
+            } catch (e2: Exception) {
+                System.currentTimeMillis()
+            }
+        }
+    }
+
     private fun mapDtoToOrder(dto: ApiOrderDto): Order {
         val status = try { OrderStatus.valueOf(dto.status) } catch (e: Exception) { OrderStatus.CREATED }
         return Order(
@@ -250,8 +290,8 @@ class OrderRepositoryImpl @Inject constructor(
             deliveryLat = dto.deliveryLat,
             deliveryLng = dto.deliveryLng,
             estimatedDurationMinutes = dto.estimatedDurationMinutes,
-            createdAt = System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis()
+            createdAt = parseTimestamp(dto.createdAt),
+            updatedAt = parseTimestamp(dto.updatedAt)
         )
     }
 }

@@ -99,8 +99,11 @@ fun DriverDeliveryScreen(
         }
     }
 
+    val historyState by viewModel.historyState.collectAsState()
+
     LaunchedEffect(Unit) {
         viewModel.fetchActiveDelivery()
+        viewModel.fetchOrderHistory()
 
         if (hasLocationPermission) {
             val intent = android.content.Intent(context, com.trackly.core.location.LocationService::class.java).apply {
@@ -125,11 +128,13 @@ fun DriverDeliveryScreen(
 
     DriverDeliveryScreenContent(
         uiState = uiState,
+        historyState = historyState,
         hasLocationPermission = hasLocationPermission,
         hasNotificationPermission = hasNotificationPermission,
         onRequestPermission = { requestOrOpenSettings() },
         onUpdateStatus = { orderId, status -> viewModel.updateStatus(orderId, status, "Driver updated state to ${status.name}") },
         onRefreshClick = { viewModel.fetchActiveDelivery() },
+        onRefreshHistory = { viewModel.fetchOrderHistory() },
         onLogout = {
             val stopIntent = android.content.Intent(context, com.trackly.core.location.LocationService::class.java).apply {
                 action = com.trackly.core.location.LocationService.ACTION_STOP
@@ -144,13 +149,16 @@ fun DriverDeliveryScreen(
 @Composable
 fun DriverDeliveryScreenContent(
     uiState: DriverDeliveryUiState,
+    historyState: DriverHistoryUiState = DriverHistoryUiState(),
     hasLocationPermission: Boolean = true,
     hasNotificationPermission: Boolean = true,
     onRequestPermission: () -> Unit = {},
     onUpdateStatus: (orderId: String, newStatus: OrderStatus) -> Unit,
     onRefreshClick: () -> Unit,
+    onRefreshHistory: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
+    var selectedTabIndex by remember { mutableStateOf(0) }
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     if (showLogoutDialog) {
@@ -180,22 +188,44 @@ fun DriverDeliveryScreenContent(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Driver Delivery Portal", fontWeight = FontWeight.Bold) },
-                actions = {
-                    IconButton(onClick = { showLogoutDialog = true }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Logout",
-                            tint = SurfaceWhite
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DeepOceanSecondary,
-                    titleContentColor = SurfaceWhite
+            Column {
+                TopAppBar(
+                    title = { Text(if (selectedTabIndex == 0) "Active Job" else "Delivery History", fontWeight = FontWeight.Bold) },
+                    actions = {
+                        IconButton(onClick = { showLogoutDialog = true }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                contentDescription = "Logout",
+                                tint = SurfaceWhite
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = DeepOceanSecondary,
+                        titleContentColor = SurfaceWhite
+                    )
                 )
-            )
+
+                TabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    containerColor = DeepOceanSecondary,
+                    contentColor = SurfaceWhite
+                ) {
+                    Tab(
+                        selected = selectedTabIndex == 0,
+                        onClick = { selectedTabIndex = 0 },
+                        text = { Text("Active Job", fontWeight = FontWeight.Bold, color = SurfaceWhite) }
+                    )
+                    Tab(
+                        selected = selectedTabIndex == 1,
+                        onClick = {
+                            selectedTabIndex = 1
+                            onRefreshHistory()
+                        },
+                        text = { Text("Delivery History", fontWeight = FontWeight.Bold, color = SurfaceWhite) }
+                    )
+                }
+            }
         }
     ) { innerPadding ->
         Box(
@@ -204,7 +234,13 @@ fun DriverDeliveryScreenContent(
                 .padding(innerPadding)
                 .background(BackgroundLight)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            if (selectedTabIndex == 1) {
+                DriverHistoryScreen(
+                    historyState = historyState,
+                    onRefresh = onRefreshHistory
+                )
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
                 if (!hasLocationPermission || !hasNotificationPermission) {
                     Card(
                         colors = CardDefaults.cardColors(
@@ -568,6 +604,7 @@ fun DriverDeliveryScreenContent(
 }
 }
 }
+}
 
 @Preview(showBackground = true, name = "Driver Active Delivery Preview")
 @Composable
@@ -597,3 +634,4 @@ fun DriverDeliveryScreenPreview() {
         )
     }
 }
+

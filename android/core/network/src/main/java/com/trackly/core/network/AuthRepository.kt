@@ -41,15 +41,15 @@ class AuthRepositoryImpl @Inject constructor(
                 )
             )
 
-            if (response.isSuccessful && response.body() != null) {
-                val body = response.body()!!
+            val responseBody = response.body()
+            if (response.isSuccessful && responseBody != null) {
                 val user = User(
-                    id = body.user.id,
-                    name = body.user.name,
-                    email = body.user.email,
-                    role = try { UserRole.valueOf(body.user.role) } catch (e: Exception) { UserRole.CUSTOMER }
+                    id = responseBody.user.id,
+                    name = responseBody.user.name,
+                    email = responseBody.user.email,
+                    role = try { UserRole.valueOf(responseBody.user.role) } catch (e: Exception) { UserRole.CUSTOMER }
                 )
-                sessionManager.saveAuthSession(body.token, user)
+                sessionManager.saveAuthSession(responseBody.token, user)
                 Log.d(TAG, "Registration successful. User saved in SessionManager: ${user.id}")
                 Resource.Success(user)
             } else {
@@ -77,17 +77,18 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val response = authApi.login(ApiLoginRequest(email = email, password = password))
 
-            if (response.isSuccessful && response.body() != null) {
-                val body = response.body()!!
+            val responseBody = response.body()
+            if (response.isSuccessful && responseBody != null) {
                 val user = User(
-                    id = body.user.id,
-                    name = body.user.name,
-                    email = body.user.email,
-                    role = try { UserRole.valueOf(body.user.role) } catch (e: Exception) { UserRole.CUSTOMER }
+                    id = responseBody.user.id,
+                    name = responseBody.user.name,
+                    email = responseBody.user.email,
+                    role = try { UserRole.valueOf(responseBody.user.role) } catch (e: Exception) { UserRole.CUSTOMER }
                 )
-                sessionManager.saveAuthSession(body.token, user)
+                sessionManager.saveAuthSession(responseBody.token, user)
                 Log.d(TAG, "Login successful. JWT token & User session stored.")
                 Resource.Success(user)
+
             } else {
                 val rawError = response.errorBody()?.string() ?: ""
                 val parsedMsg = try {

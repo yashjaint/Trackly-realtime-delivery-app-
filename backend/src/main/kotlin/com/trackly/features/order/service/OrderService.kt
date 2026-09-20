@@ -158,6 +158,29 @@ class OrderService {
         return orderRow?.get(OrdersTable.id)?.let { getOrderById(it.toString()) }
     }
 
+    fun getOrderHistoryForUser(userIdStr: String): List<OrderDto> {
+        val userId = UUID.fromString(userIdStr)
+        logger.info("Fetching order history for userId={}", userIdStr)
+
+        val driverRow = transaction {
+            DriversTable.selectAll().where { DriversTable.userId eq userId }.singleOrNull()
+        }
+        val driverId = driverRow?.get(DriversTable.id)
+
+        val orderIds = transaction {
+            OrdersTable.selectAll()
+                .where {
+                    val isCustomer = OrdersTable.customerId eq userId
+                    val isDriver = if (driverId != null) OrdersTable.driverId eq driverId else null
+                    if (isDriver != null) (isCustomer or isDriver) else isCustomer
+                }
+                .orderBy(OrdersTable.createdAt to SortOrder.DESC)
+                .map { it[OrdersTable.id].toString() }
+        }
+
+        return orderIds.map { getOrderById(it) }
+    }
+
     fun updateOrderStatus(orderIdStr: String, updatedByUserIdStr: String, newStatusStr: String, remark: String?): OrderDto {
         val orderId = UUID.fromString(orderIdStr)
         val updatedByUserId = UUID.fromString(updatedByUserIdStr)

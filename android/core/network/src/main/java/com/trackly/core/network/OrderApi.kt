@@ -75,6 +75,11 @@ interface OrderApi {
         @Body request: ApiUpdateOrderStatusRequest
     ): Response<ApiOrderDto>
 
+    @GET("api/v1/orders/history")
+    suspend fun getOrderHistory(
+        @Header("Authorization") authHeader: String
+    ): Response<List<ApiOrderDto>>
+
     @POST("api/v1/orders/{id}/assign")
     suspend fun assignDriver(
         @Header("Authorization") authHeader: String,
