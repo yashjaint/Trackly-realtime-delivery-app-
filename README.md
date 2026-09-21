@@ -86,11 +86,6 @@ Trackly is engineered following modern Android and Kotlin development guidelines
 
 ```
 Trackly/
-├── docs/                      # Demonstration Media (GIFs & Full Video Walkthrough)
-│   ├── order_creation.gif
-│   ├── order_status_update_service.gif
-│   ├── trackly_ai.gif
-│   └── trackly_walkthrough.mp4
 ├── android/                   # Multi-Module Jetpack Compose Android Client
 │   ├── app/                   # Navigation Host & Hilt Application Entrypoint
 │   ├── feature/               # UI Feature Modules (MVVM + Domain Use Cases)
