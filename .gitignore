@@ -24,3 +24,6 @@ backend/.idea/
 *.keystore
 *.jks
 google-services.json
+
+# Large Media
+*.mp4

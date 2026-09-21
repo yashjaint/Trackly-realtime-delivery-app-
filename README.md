@@ -27,27 +27,39 @@
 
 ---
 
-## ✨ Core Features & Application Portals
+## 🎬 Application Feature Demos
 
-Trackly provides tailored experiences for both Customers and Delivery Drivers:
+| 📍 1. Order Creation & Debounced Search | 🚚 2. Delivery Driver Portal & Service | 🤖 3. Gemini AI Assistant |
+| :---: | :---: | :---: |
+| ![Order Creation](docs/order_creation.gif) | ![Driver Portal & Service](docs/order_status_update_service.gif) | ![Trackly AI Assistant](docs/trackly_ai.gif) |
+| **Order Creation with Address Autocomplete**<br>Demonstrates debounced location search (`300ms`), address suggestions, and dynamic arrival ETA calculation. | **Status Milestone Updates & Service**<br>Driver updates status milestones (`PICKED_UP` $\rightarrow$ `DELIVERED`) and launches background location service. | **Interactive Gemini AI Assistant**<br>Compose bottom sheet answering natural language customer inquiries about delivery status in real-time. |
 
-### 📦 Customer Portal
-- **Order Creation with Address Autocomplete**: Create delivery orders with real-time pickup and delivery location suggestions powered by OpenStreetMap search autocomplete.
-- **Live Google Maps Tracking**: Watch your assigned delivery driver move on the map in real time with custom pickup/dropoff markers, route polyline paths, and dynamic arrival ETA calculations.
-- **Stage-by-Stage Delivery Timeline**: Track your package through all lifecycle stages (`CREATED` $\rightarrow$ `CONFIRMED` $\rightarrow$ `PREPARING` $\rightarrow$ `READY_FOR_PICKUP` $\rightarrow$ `PICKED_UP` $\rightarrow$ `OUT_FOR_DELIVERY` $\rightarrow$ `DELIVERED`).
-- **Order History & Active Cards**: Swipe between active ongoing orders or review past order history.
+---
 
-### 🚚 Delivery Driver Portal
-- **Job Acceptance & Milestone Control**: View available delivery jobs, accept assignments, and update package delivery status milestones step-by-step.
-- **Background Location Broadcasting**: Broadcast live driver GPS coordinates to tracking customers via a persistent Android Foreground Service.
-- **Delivery Job History**: View past completed delivery records.
+## ⚡ Application Feature Breakdown
 
-### 🤖 Integrated Gemini AI Assistant
-- Interactive bottom-sheet AI assistant allowing customers to ask natural language questions about their package (e.g., *"Where is my package right now?"*), powered by Google Gemini API.
+- **📦 Customer Portal**:
+  - **Order Creation & Search Suggestions**: Debounced search query autocomplete for pickup and delivery locations.
+  - **Live Google Maps Tracking**: Displays live driver position updates, pickup/dropoff markers, route polyline paths, and dynamic arrival ETA calculation.
+  - **Stage-by-Stage Timeline**: Visual stage progress tracker (`CREATED` $\rightarrow$ `CONFIRMED` $\rightarrow$ `PREPARING` $\rightarrow$ `READY_FOR_PICKUP` $\rightarrow$ `PICKED_UP` $\rightarrow$ `OUT_FOR_DELIVERY` $\rightarrow$ `DELIVERED`).
+  - **Active Swipable Order Cards & History**: Swipe between multiple active ongoing orders or review past order history.
+- **🚚 Delivery Driver Portal**:
+  - **Milestone Controls**: Accept delivery jobs and update delivery status milestones step-by-step.
+  - **Background Location Service**: Broadcasts live driver GPS coordinates via a dedicated Android `ForegroundService` with heads-up notification.
+  - **Delivery History**: Review past completed driver deliveries.
+- **🤖 Integrated Gemini AI Assistant**:
+  - Interactive bottom-sheet AI assistant answering customer questions about package status in plain language using the Google Gemini API.
+- **👤 Profile & Account Management**:
+  - Profile customization (Name & Vehicle Number) via 3-dot overflow menu with safeguards preventing account deletion while orders are active.
 
-### 👤 Profile & Account Management
-- **Profile Customization**: View and edit your Full Name and Vehicle Number via a 3-dot overflow menu.
-- **Account Deletion Safeguards**: Account deletion rules check for active orders or delivery jobs before processing.
+---
+
+## 📹 Full Video Walkthrough
+
+> 🎬 **Complete End-to-End Application Demo**:  
+> Watch the full walkthrough covering account registration, order creation, driver assignment, live map tracking, timeline status updates, and AI chatbot interaction:
+> 
+> 🔗 **[Click here to watch the full Trackly Video Walkthrough (docs/trackly_walkthrough.mp4)](docs/trackly_walkthrough.mp4)**
 
 ---
 
@@ -74,6 +86,11 @@ Trackly is engineered following modern Android and Kotlin development guidelines
 
 ```
 Trackly/
+├── docs/                      # Demonstration Media (GIFs & Full Video Walkthrough)
+│   ├── order_creation.gif
+│   ├── order_status_update_service.gif
+│   ├── trackly_ai.gif
+│   └── trackly_walkthrough.mp4
 ├── android/                   # Multi-Module Jetpack Compose Android Client
 │   ├── app/                   # Navigation Host & Hilt Application Entrypoint
 │   ├── feature/               # UI Feature Modules (MVVM + Domain Use Cases)
