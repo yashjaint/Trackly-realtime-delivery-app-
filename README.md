@@ -76,7 +76,7 @@
 > 🎬 **Complete End-to-End Application Demo**:  
 > Watch the full 5-minute video walkthrough covering account registration, order creation with debounced address search, driver job assignment, live map tracking, timeline status transitions, and AI chatbot interaction.
 > 
-> 🔗 **[Watch Full Video Walkthrough](https://github.com/yashjaint/Trackly)** *(Upload to YouTube / Google Drive / GitHub Releases to insert link)*
+> 🔗 **[▶️ Watch Full Trackly Video Walkthrough on Google Drive](https://drive.google.com/file/d/1eUHpQBauGv5OdGx3WKfMxeCayZb496iv/view?usp=sharing)**
 
 ---
 
