@@ -47,19 +47,19 @@
 
 ## 🎬 Feature Walkthrough Demos
 
-### 📍 1. Order Creation & Debounced Search Autocomplete
+### 📍 1. Order Creation & Geolocation Address Suggestions
 
 | Demo Preview | Feature Description & Technical Highlights |
 | :---: | :--- |
-| ![Order Creation](docs/order_creation.gif) | **Smart Order Creation with Debounced Location Search**<br><br>• **Address Autocomplete**: Debounced query search (`300ms`) using OpenStreetMap / Nominatim API to provide real-time location suggestions.<br>• **Instant Route ETA Calculation**: Computes dynamic route arrival estimations based on spherical distance metrics.<br>• **Custom Pickup & Dropoff**: Interactive form validation for package title, description, and location coordinates. |
+| ![Order Creation](docs/order_creation.gif) | **Smart Order Creation with Real-Time Geolocation Autocomplete**<br><br>• **Geolocation Address Suggestions**: Suggests real-time nearby streets, landmarks, and location suggestions as the user types.<br>• **Debounced Search Query Flow**: Utilizes Kotlin Coroutines `debounce(300ms)` flow operator to prevent redundant network calls and rate-limiting while typing.<br>• **Dynamic Route ETA Calculation**: Instantly computes arrival time estimations derived from pickup and delivery coordinate spherical distance metrics.<br>• **Custom Package Details**: Form validation capturing order title, item description, and exact coordinates. |
 
 ---
 
-### 🚚 2. Delivery Driver Portal & Location Service
+### 🚚 2. Delivery Driver Portal & Foreground Location Tracking Service
 
 | Demo Preview | Feature Description & Technical Highlights |
 | :---: | :--- |
-| ![Driver Service](docs/order_status_update_service.gif) | **Delivery Milestone Control & Foreground Location Service**<br><br>• **Status Milestone State Machine**: Delivery drivers step through order stages (`ASSIGNED` $\rightarrow$ `PICKED_UP` $\rightarrow$ `OUT_FOR_DELIVERY` $\rightarrow$ `DELIVERED`).<br>• **Android Foreground Service**: Launches persistent `LocationService` with heads-up notification drawer updates to stream real-time GPS coordinates.<br>• **Real-Time Location Streaming**: Driver location updates broadcasted over WebSockets to tracking clients. |
+| ![Driver Service](docs/order_status_update_service.gif) | **Delivery Milestone Control & Persistent Location Broadcasting**<br><br>• **Android Foreground Location Service**: Launches a persistent background `LocationService` with a heads-up status bar notification to capture and broadcast driver GPS coordinates continuously even when the app is minimized.<br>• **Order Milestone State Machine**: Drivers progress orders through deterministic lifecycle stages (`ASSIGNED` $\rightarrow$ `PICKED_UP` $\rightarrow$ `OUT_FOR_DELIVERY` $\rightarrow$ `DELIVERED`).<br>• **Real-Time WebSocket Streaming**: Streamed GPS location updates (`lat`, `lng`) transmitted live over WebSockets to update customer map view polyline and vehicle marker. |
 
 ---
 
@@ -67,16 +67,16 @@
 
 | Demo Preview | Feature Description & Technical Highlights |
 | :---: | :--- |
-| ![Trackly AI](docs/trackly_ai.gif) | **Generative AI Package Support Chatbot**<br><br>• **Contextual Prompt Engineering**: Passes active order metadata and current stage to the Google Gemini API.<br>• **Jetpack Compose Bottom Sheet**: Interactive bottom sheet UI with reactive message bubbles and typing indicators.<br>• **Natural Language Inquiries**: Responds to customer inquiries (e.g. *"Where is my package right now?"*) in plain language. |
+| ![Trackly AI](docs/trackly_ai.gif) | **Generative AI Package Support & Delivery Assistant**<br><br>• **Google Gemini AI Integration**: Integrates the Gemini API model to provide instant conversational support for delivery queries.<br>• **Contextual Prompt Engineering**: Constructs real-time prompts containing active order ID, item title, current milestone stage, pickup/delivery addresses, and driver details.<br>• **Jetpack Compose Bottom Sheet UI**: Interactive modal bottom sheet interface featuring animated message bubbles, loading states, and natural language response rendering. |
 
 ---
 
 ## 📹 Full Video Walkthrough
 
 > 🎬 **Complete End-to-End Application Demo**:  
-> Watch the full walkthrough covering account registration, order creation, driver assignment, live map tracking, timeline status updates, and AI chatbot interaction:
+> Watch the full 5-minute video walkthrough covering account registration, order creation with debounced address search, driver job assignment, live map tracking, timeline status transitions, and AI chatbot interaction.
 > 
-> 🔗 **[Click here to watch the full Trackly Video Walkthrough (docs/trackly_walkthrough.mp4)](docs/trackly_walkthrough.mp4)**
+> 🔗 **[Watch Full Video Walkthrough](https://github.com/yashjaint/Trackly)** *(Upload to YouTube / Google Drive / GitHub Releases to insert link)*
 
 ---
 
