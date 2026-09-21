@@ -27,30 +27,47 @@
 
 ---
 
-## 🎬 Application Feature Demos
-
-| 📍 1. Order Creation & Debounced Search | 🚚 2. Delivery Driver Portal & Service | 🤖 3. Gemini AI Assistant |
-| :---: | :---: | :---: |
-| ![Order Creation](docs/order_creation.gif) | ![Driver Portal & Service](docs/order_status_update_service.gif) | ![Trackly AI Assistant](docs/trackly_ai.gif) |
-| **Order Creation with Address Autocomplete**<br>Demonstrates debounced location search (`300ms`), address suggestions, and dynamic arrival ETA calculation. | **Status Milestone Updates & Service**<br>Driver updates status milestones (`PICKED_UP` $\rightarrow$ `DELIVERED`) and launches background location service. | **Interactive Gemini AI Assistant**<br>Compose bottom sheet answering natural language customer inquiries about delivery status in real-time. |
-
----
-
 ## ⚡ Application Feature Breakdown
 
 - **📦 Customer Portal**:
-  - **Order Creation & Search Suggestions**: Debounced search query autocomplete for pickup and delivery locations.
+  - **Order Creation & Search Suggestions**: Debounced search query autocomplete for pickup and delivery locations powered by OpenStreetMap search.
   - **Live Google Maps Tracking**: Displays live driver position updates, pickup/dropoff markers, route polyline paths, and dynamic arrival ETA calculation.
   - **Stage-by-Stage Timeline**: Visual stage progress tracker (`CREATED` $\rightarrow$ `CONFIRMED` $\rightarrow$ `PREPARING` $\rightarrow$ `READY_FOR_PICKUP` $\rightarrow$ `PICKED_UP` $\rightarrow$ `OUT_FOR_DELIVERY` $\rightarrow$ `DELIVERED`).
   - **Active Swipable Order Cards & History**: Swipe between multiple active ongoing orders or review past order history.
 - **🚚 Delivery Driver Portal**:
   - **Milestone Controls**: Accept delivery jobs and update delivery status milestones step-by-step.
-  - **Background Location Service**: Broadcasts live driver GPS coordinates via a dedicated Android `ForegroundService` with heads-up notification.
+  - **Background Location Service**: Broadcasts live driver GPS coordinates via a dedicated Android `ForegroundService` with heads-up notification drawer updates.
   - **Delivery History**: Review past completed driver deliveries.
 - **🤖 Integrated Gemini AI Assistant**:
   - Interactive bottom-sheet AI assistant answering customer questions about package status in plain language using the Google Gemini API.
 - **👤 Profile & Account Management**:
   - Profile customization (Name & Vehicle Number) via 3-dot overflow menu with safeguards preventing account deletion while orders are active.
+
+---
+
+## 🎬 Feature Walkthrough Demos
+
+### 📍 1. Order Creation & Debounced Search Autocomplete
+
+| Demo Preview | Feature Description & Technical Highlights |
+| :---: | :--- |
+| ![Order Creation](docs/order_creation.gif) | **Smart Order Creation with Debounced Location Search**<br><br>• **Address Autocomplete**: Debounced query search (`300ms`) using OpenStreetMap / Nominatim API to provide real-time location suggestions.<br>• **Instant Route ETA Calculation**: Computes dynamic route arrival estimations based on spherical distance metrics.<br>• **Custom Pickup & Dropoff**: Interactive form validation for package title, description, and location coordinates. |
+
+---
+
+### 🚚 2. Delivery Driver Portal & Location Service
+
+| Demo Preview | Feature Description & Technical Highlights |
+| :---: | :--- |
+| ![Driver Service](docs/order_status_update_service.gif) | **Delivery Milestone Control & Foreground Location Service**<br><br>• **Status Milestone State Machine**: Delivery drivers step through order stages (`ASSIGNED` $\rightarrow$ `PICKED_UP` $\rightarrow$ `OUT_FOR_DELIVERY` $\rightarrow$ `DELIVERED`).<br>• **Android Foreground Service**: Launches persistent `LocationService` with heads-up notification drawer updates to stream real-time GPS coordinates.<br>• **Real-Time Location Streaming**: Driver location updates broadcasted over WebSockets to tracking clients. |
+
+---
+
+### 🤖 3. Interactive Gemini AI Assistant
+
+| Demo Preview | Feature Description & Technical Highlights |
+| :---: | :--- |
+| ![Trackly AI](docs/trackly_ai.gif) | **Generative AI Package Support Chatbot**<br><br>• **Contextual Prompt Engineering**: Passes active order metadata and current stage to the Google Gemini API.<br>• **Jetpack Compose Bottom Sheet**: Interactive bottom sheet UI with reactive message bubbles and typing indicators.<br>• **Natural Language Inquiries**: Responds to customer inquiries (e.g. *"Where is my package right now?"*) in plain language. |
 
 ---
 
